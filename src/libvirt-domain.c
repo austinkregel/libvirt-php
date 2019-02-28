@@ -1485,10 +1485,10 @@ PHP_FUNCTION(libvirt_domain_reboot)
 
 /*
  * Function name:   libvirt_domain_reset
- * Since version:   0.5.5
- * Description:     Function is used to reset the domain identified by its resource
+ * Since version:   0.4.1(-1)
+ * Description:     Function is used to reset the domain identified by it's resource, without any guest OS shutdown. Reset emulates the power reset button on a machine, where all hardware sees the RST line set and reinitializes internal state.
  * Arguments:       @res [resource]: libvirt domain resource, e.g. from libvirt_domain_lookup_by_*()
- *                  @flags [int]: optional flags
+ *                  @flags [int]: extra flags; not used yet, so callers should always pass 0
  * Returns:         TRUE for success, FALSE on error
  */
 PHP_FUNCTION(libvirt_domain_reset)
