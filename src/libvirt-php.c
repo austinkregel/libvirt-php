@@ -542,6 +542,8 @@ static zend_function_entry libvirt_functions[] = {
     PHP_FE_LIBVIRT_NWFILTER
     /* Common functions */
     PHP_FE(libvirt_get_last_error,               arginfo_libvirt_void)
+    PHP_FE(libvirt_get_last_error_code,          arginfo_libvirt_void)
+    PHP_FE(libvirt_get_last_error_domain,        arginfo_libvirt_void)
     /* Version information and common function */
     PHP_FE(libvirt_version,                      arginfo_libvirt_opttype)
     PHP_FE(libvirt_check_version,                arginfo_libvirt_check_version)
@@ -951,6 +953,29 @@ void set_error(char *msg)
 }
 
 /*
+ * Private function name:   set_error3
+ * Since version:           0.5.5
+ * Description:             This private function is used to set the error string and errno to the library. This string and code can be obtained by libvirt_get_last_error() and libvirt_get_last_error_code() from the PHP application.
+ * Arguments:               @msg [string]: error message string
+ * Returns:                 None
+ */
+void set_error3(char *msg, int code, int domain TSRMLS_DC)
+{
+    if (LIBVIRT_G(last_error) != NULL)
+        efree(LIBVIRT_G(last_error));
+
+    if (msg == NULL) {
+        LIBVIRT_G(last_error) = NULL;
+        return;
+    }
+
+    php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s", msg);
+    LIBVIRT_G(last_error) = estrndup(msg, strlen(msg));
+    LIBVIRT_G(last_error_code) = code;
+    LIBVIRT_G(last_error_domain) = domain;
+}
+
+/*
  * Private function name:   set_vnc_location
  * Since version:           0.4.5
  * Description:             This private function is used to set the VNC location for the newly started installation
@@ -1002,7 +1027,8 @@ void reset_error(void)
 static void catch_error(void *userData ATTRIBUTE_UNUSED,
                         virErrorPtr error)
 {
-    set_error(error->message);
+    TSRMLS_FETCH_FROM_CTX(userData);
+    set_error3(error->message, error->code, error->domain TSRMLS_CC);
 }
 
 /*
@@ -1628,6 +1654,28 @@ PHP_FUNCTION(libvirt_get_last_error)
     if (LIBVIRT_G (last_error) == NULL)
         RETURN_NULL();
     VIRT_RETURN_STRING(LIBVIRT_G(last_error));
+}
+
+/*
+ * Function name:   libvirt_get_last_error_code
+ * Since version:   0.5.5
+ * Description:     This function is used to get the last error code coming either from libvirt or the PHP extension itself
+ * Returns:         last error code
+ */
+PHP_FUNCTION(libvirt_get_last_error_code)
+{
+    RETURN_LONG(LIBVIRT_G(last_error_code));
+}
+
+/*
+ * Function name:   libvirt_get_last_error_domain
+ * Since version:   0.5.5
+ * Description:     This function is used to get the what part of the library raised the last error
+ * Returns:         last error domain
+ */
+PHP_FUNCTION(libvirt_get_last_error_domain)
+{
+    RETURN_LONG(LIBVIRT_G(last_error_domain));
 }
 
 /*

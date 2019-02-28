@@ -125,6 +125,8 @@ typedef struct tVMNetwork {
 
 ZEND_BEGIN_MODULE_GLOBALS(libvirt)
     char *last_error;
+    int last_error_code;
+    int last_error_domain;
     char *vnc_location;
     zend_bool longlong_to_string_ini;
     zend_bool signed_longlong_to_string_ini;
@@ -141,10 +143,11 @@ ZEND_END_MODULE_GLOBALS(libvirt)
 ZEND_EXTERN_MODULE_GLOBALS(libvirt)
 
 /* Private definitions */
-void set_error(char *msg);
-void set_error_if_unset(char *msg);
-void reset_error(void);
-int count_resources(int type);
+void set_error(char *msg TSRMLS_DC);
+void set_error3(char *msg, int code, int domain TSRMLS_DC);
+void set_error_if_unset(char *msg TSRMLS_DC);
+void reset_error(TSRMLS_D);
+int count_resources(int type TSRMLS_DC);
 int resource_change_counter(int type, virConnectPtr conn, void *mem,
                             int inc);
 int check_resource_allocation(virConnectPtr conn, int type,
@@ -181,6 +184,8 @@ PHP_MINFO_FUNCTION(libvirt);
 
 /* Common functions */
 PHP_FUNCTION(libvirt_get_last_error);
+PHP_FUNCTION(libvirt_get_last_error_code);
+PHP_FUNCTION(libvirt_get_last_error_domain);
 PHP_FUNCTION(libvirt_version);
 PHP_FUNCTION(libvirt_check_version);
 PHP_FUNCTION(libvirt_has_feature);
