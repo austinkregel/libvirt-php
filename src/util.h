@@ -127,14 +127,14 @@
 # define VIRT_ADD_ASSOC_STRING(_arg, _key, _str) \
     add_assoc_string(_arg, _key, _str)
 
-# define VIRT_ADD_ASSOC_STRING_WITH_NULL_POINTER_CHECK(_arg, _key, _str) \
+#  define VIRT_ADD_ASSOC_STRING_WITH_NULL_POINTER_CHECK(_arg, _key, _str) \
     if ((_str)) { \
         add_assoc_string(_arg, _key, _str); \
     } else { \
         add_assoc_null(_arg, _key); \
     }
 
-# define VIRT_ADD_ASSOC_STRING_EX(_arg, _key, _key_len, _value) \
+#  define VIRT_ADD_ASSOC_STRING_EX(_arg, _key, _key_len, _value) \
     add_assoc_string_ex(_arg, _key, _key_len, _value)
 
 #  define VIRT_ADD_ASSOC_ZVAL_EX(_zv, _key, _value) \
