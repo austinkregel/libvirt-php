@@ -1948,6 +1948,7 @@ PHP_FUNCTION(libvirt_domain_block_stats)
         RETURN_FALSE;
 
     array_init(return_value);
+    LONGLONG_INIT;
     SIGNED_LONGLONG_ASSOC(return_value, "rd_req", stats.rd_req);
     SIGNED_LONGLONG_ASSOC(return_value, "rd_bytes", stats.rd_bytes);
     SIGNED_LONGLONG_ASSOC(return_value, "wr_req", stats.wr_req);
