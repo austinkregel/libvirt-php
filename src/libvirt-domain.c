@@ -146,10 +146,18 @@ PHP_FUNCTION(libvirt_domain_new)
     tmp = installation_get_xml(conn->conn, name, memMB, maxmemMB,
                                NULL, NULL, vcpus, iso_image,
                                vmDisks, numDisks, vmNetworks, numNets,
-                               flags TSRMLS_CC);
+                               flags
+    TSRMLS_CC);
+
     if (tmp == NULL) {
         DPRINTF("%s: Cannot get installation XML\n", PHPFUNC);
-        set_error("Cannot get installation XML" TSRMLS_CC);
+        set_error("Cannot get installation XML, it seems to be null" TSRMLS_CC);
+        goto error;
+    }
+
+    if (tmp[0] != '<') {
+        DPRINTF("%s: %s\n", PHPFUNC, tmp);
+        set_error(tmp TSRMLS_CC);
         goto error;
     }
 
@@ -218,9 +226,16 @@ PHP_FUNCTION(libvirt_domain_new)
                                NULL, uuid, vcpus, NULL,
                                vmDisks, numDisks, vmNetworks, numNets,
                                flags TSRMLS_CC);
+
     if (tmp == NULL) {
         DPRINTF("%s: Cannot get installation XML\n", PHPFUNC);
         set_error("Cannot get installation XML" TSRMLS_CC);
+        goto error;
+    }
+
+    if (tmp[0] != '<') {
+        DPRINTF("%s: %s\n", PHPFUNC, tmp);
+        set_error(tmp TSRMLS_CC);
         goto error;
     }
 

@@ -117,7 +117,9 @@
     PHP_FE(libvirt_list_domain_resources,        arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_list_active_domain_ids,       arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_list_active_domains,          arginfo_libvirt_conn)                         \
-    PHP_FE(libvirt_list_inactive_domains,        arginfo_libvirt_conn)
+    PHP_FE(libvirt_list_inactive_domains,        arginfo_libvirt_conn)                         \
+    PHP_FE(libvirt_list_inactive_domains,        arginfo_libvirt_conn)                         \
+    PHP_FE(libvirt_domain_get_cpu_total_stats,   arginfo_libvirt_conn)                         \
 
 int le_libvirt_domain;
 
@@ -206,5 +208,6 @@ PHP_FUNCTION(libvirt_list_domain_resources);
 PHP_FUNCTION(libvirt_list_active_domain_ids);
 PHP_FUNCTION(libvirt_list_active_domains);
 PHP_FUNCTION(libvirt_list_inactive_domains);
+PHP_FUNCTION(libvirt_domain_get_cpu_total_stats);
 
 #endif
