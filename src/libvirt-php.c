@@ -248,6 +248,11 @@ ZEND_ARG_INFO(0, bandwidth)
 ZEND_ARG_INFO(0, flags)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_libvirt_domain_interface_addresses, 0, 0, 2)
+ZEND_ARG_INFO(0, domain)
+ZEND_ARG_INFO(0, source)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_libvirt_domain_block_job_info, 0, 0, 2)
 ZEND_ARG_INFO(0, dom)
 ZEND_ARG_INFO(0, disk)
@@ -1518,6 +1523,10 @@ PHP_MINIT_FUNCTION(libvirt)
     REGISTER_LONG_CONSTANT("VIR_DOMAIN_MEM_LIVE",   VIR_DOMAIN_MEM_LIVE, CONST_CS | CONST_PERSISTENT);
     REGISTER_LONG_CONSTANT("VIR_DOMAIN_MEM_MAXIMUM",    VIR_DOMAIN_MEM_MAXIMUM, CONST_CS | CONST_PERSISTENT);
 
+    REGISTER_LONG_CONSTANT("VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE", VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE, CONST_CS | CONST_PERSISTENT);
+    REGISTER_LONG_CONSTANT("VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT", VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_AGENT, CONST_CS | CONST_PERSISTENT);
+    REGISTER_LONG_CONSTANT("VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_ARP", VIR_DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE, CONST_CS | CONST_PERSISTENT);
+
     /* Connect flags */
     REGISTER_LONG_CONSTANT("VIR_CONNECT_FLAG_SOUNDHW_GET_NAMES",    CONNECT_FLAG_SOUNDHW_GET_NAMES, CONST_CS | CONST_PERSISTENT);
 
@@ -1721,7 +1730,7 @@ PHP_FUNCTION(libvirt_image_remove)
 /*
  * Private function name:   get_string_from_xpath
  * Since version:           0.4.1(-1)
- * Description:             Function is used to get the XML xPath expression from the XML document. This can be added to val array if not NULL.
+ * Description:             Function is used to get the XML xPath expression from the XML document. This can be added to val array if not NULL. Note that the result of @xpath is viewed as "string(@xpath)" which may not be what you want. See get_node_string_from_xpath().
  * Arguments:               @xml [string]: input XML document
  *                          @xpath [string]: xPath expression to find nodes in the XML document
  *                          @val [array]: Zend array resource to put data to
@@ -1800,6 +1809,66 @@ char *get_string_from_xpath(char *xml, char *xpath, zval **val, int *retVal)
     xmlCleanupParser();
     return value;
 }
+
+
+/*
+ * Private function name:   get_node_string_from_xpath
+ * Since version:           0.5.5
+ * Description:             Evaluate @xpath and convert retuned node to string. The difference to get_string_from_xpath() is that get_string_from_xpath() puts implicit string() around @xpath and get_node_string_from_xpath() evaluates @xpath as is and only then translates xml node into a C string.
+ *
+ * Arguments:               @xml [string]: input XML document
+ *                          @xpath [string]: xPath expression to find nodes in the XML document
+ * Returns:                 stringified result of @xpath evaluation
+ */
+char *get_node_string_from_xpath(char *xml, char *xpath)
+{
+    xmlParserCtxtPtr xp = NULL;
+    xmlDocPtr doc = NULL;
+    xmlXPathContextPtr context = NULL;
+    xmlXPathObjectPtr result = NULL;
+    xmlNodeSetPtr nodeset = NULL;
+    size_t i;
+    char *value = NULL;
+    xmlBufferPtr xmlbuf = NULL;
+    char *ret = NULL;
+
+
+    if (!xpath || !xml)
+        return NULL;
+
+    if (!(xp = xmlCreateDocParserCtxt((xmlChar *)xml)))
+        return NULL;
+
+    if (!(doc = xmlCtxtReadDoc(xp, (xmlChar *)xml, NULL, NULL, 0)) ||
+        !(context = xmlXPathNewContext(doc)) ||
+        !(result = xmlXPathEvalExpression((xmlChar *)xpath, context)))
+        goto cleanup;
+
+    if (xmlXPathNodeSetIsEmpty(result->nodesetval))
+        goto cleanup;
+
+    if (result->nodesetval->nodeNr > 1) {
+        set_error("XPATH returned too much nodes, expeced only 1" TSRMLS_CC);
+        goto cleanup;
+    }
+
+    if (!(xmlbuf = xmlBufferCreate()) ||
+        xmlNodeDump(xmlbuf, doc, result->nodesetval->nodeTab[0], 0, 1) == 0 ||
+        !(ret = strdup((const char *)xmlBufferContent(xmlbuf)))) {
+        set_error("failed to convert the XML node tree" TSRMLS_CC);
+        goto cleanup;
+    }
+
+ cleanup:
+    xmlBufferFree(xmlbuf);
+    xmlXPathFreeObject(result);
+    xmlXPathFreeContext(context);
+    xmlFreeDoc(doc);
+    xmlFreeParserCtxt(xp);
+    xmlCleanupParser();
+    return ret;
+}
+
 
 /*
  * Private function name:   get_array_from_xpath
@@ -2085,7 +2154,7 @@ char *connection_get_emulator(virConnectPtr conn, char *arch TSRMLS_DC)
     char *tmp = NULL;
     char *caps = NULL;
     char *tmpArch = NULL;
-    char xpath[1024] = { 0 };
+    char *xpath = NULL;
     int retval = -1;
 
     caps = virConnectGetCapabilities(conn);
@@ -2102,18 +2171,10 @@ char *connection_get_emulator(virConnectPtr conn, char *arch TSRMLS_DC)
 
     DPRINTF("%s: Requested emulator for arch '%s'\n",  __FUNCTION__, arch);
 
-    snprintf(xpath, sizeof(xpath), "//capabilities/guest/arch[@name='%s']/domain/emulator", arch);
-    DPRINTF("%s: Applying xPath '%s' to capabilities XML output\n", __FUNCTION__, xpath);
-    tmp = get_string_from_xpath(caps, xpath, NULL, &retval);
-    if (tmp && retval >= 0) {
-        DPRINTF("%s: Emulator is '%s'\n",  __FUNCTION__, tmp);
-        goto done;
-    }
+    if (asprintf(&xpath, "//capabilities/guest/arch[@name='%s']/emulator", arch) < 0)
+        goto cleanup;
 
-    DPRINTF("%s: No emulator found. Trying next location ...\n", __FUNCTION__);
-    snprintf(xpath, sizeof(xpath), "//capabilities/guest/arch[@name='%s']/emulator", arch);
     DPRINTF("%s: Applying xPath '%s' to capabilities XML output\n",  __FUNCTION__, xpath);
-    VIR_FREE(tmp);
     tmp = get_string_from_xpath(caps, xpath, NULL, &retval);
     if (!tmp || retval < 0) {
         DPRINTF("%s: None emulator found\n",  __FUNCTION__);
@@ -2125,6 +2186,7 @@ char *connection_get_emulator(virConnectPtr conn, char *arch TSRMLS_DC)
     tmp = NULL;
     DPRINTF("%s: Emulator is '%s'\n",  __FUNCTION__, ret);
  cleanup:
+    VIR_FREE(xpath);
     VIR_FREE(tmpArch);
     VIR_FREE(caps);
     VIR_FREE(tmp);
@@ -2352,12 +2414,13 @@ char *installation_get_xml(virConnectPtr conn, char *name, int memMB,
     char networks_xml[16384] = { 0 };
     char features[128] = { 0 };
     char *tmp = NULL;
+    char* errorBuffer = malloc(150);
     char type[64] = { 0 };
     int rv;
 
     if (conn == NULL) {
-        DPRINTF("%s: Invalid libvirt connection pointer\n", __FUNCTION__);
-        return NULL;
+        sprintf(errorBuffer, "%s: Invalid libvirt connection pointer\n", __FUNCTION__);
+        return errorBuffer;
     }
 
     if (uuid == NULL)
@@ -2372,17 +2435,16 @@ char *installation_get_xml(virConnectPtr conn, char *name, int memMB,
 
     if (arch == NULL) {
         arch = connection_get_arch(conn TSRMLS_CC);
-        DPRINTF("%s: No architecture defined, got host arch of '%s'\n", __FUNCTION__, arch);
     }
 
     if (!(emulator = connection_get_emulator(conn, arch TSRMLS_CC))) {
-        DPRINTF("%s: Cannot get emulator\n", __FUNCTION__);
-        return NULL;
+        sprintf(errorBuffer, "%s: Cannot get emulator\n", __FUNCTION__);
+        return errorBuffer;
     }
 
     if (iso_image && access(iso_image, R_OK) != 0) {
-        DPRINTF("%s: Installation image %s doesn't exist\n", __FUNCTION__, iso_image);
-        return NULL;
+        sprintf(errorBuffer, "%s: Installation image %s doesn't exist\n", __FUNCTION__, iso_image);
+        return errorBuffer;
     }
 
     tmp = connection_get_domain_type(conn, arch TSRMLS_CC);
@@ -2494,7 +2556,7 @@ char *installation_get_xml(virConnectPtr conn, char *name, int memMB,
     VIR_FREE(tmp);
     VIR_FREE(arch);
     if (rv < 0)
-        return NULL;
+        return "Error: Couldn't process if/else stuff...";
 
     return xml;
 }
@@ -2811,3 +2873,53 @@ PHP_FUNCTION(libvirt_logfile_set)
     RETURN_TRUE;
 }
 #endif
+
+/*
+ * Function name:   libvirt_domain_get_cpu_total_stats
+ * Since version:   0.5.5
+ * Description:     Function is used to get statistics relating to CPU usage attributable to a single domain
+ * Arguments:       @res [resource]: libvirt connection resource
+ * Returns:         array, in second unit
+ */
+PHP_FUNCTION(libvirt_domain_get_cpu_total_stats)
+{
+    php_libvirt_domain *domain = NULL;
+    zval *zdomain;
+
+    virTypedParameterPtr params = NULL;
+    int max_id, cpu = 0, show_count = -1, nparams = 0, stats_per_cpu, done = 0, i;
+
+    GET_DOMAIN_FROM_ARGS("r", &zdomain);
+
+
+    /* get supported num of parameter for total statistics */
+    if ((nparams = virDomainGetCPUStats(domain->domain, NULL, 0, -1, 1, 0)) < 0)
+        goto cleanup;
+
+    if (!nparams) {
+        goto cleanup;
+    }
+
+    params = calloc(nparams, sizeof(virTypedParameter));
+
+    if (params == NULL)
+        goto cleanup;
+
+    /* passing start_cpu == -1 gives us domain's total status */
+    if ((stats_per_cpu = virDomainGetCPUStats(domain->domain, params, nparams, -1, 1, 0)) < 0)
+        goto cleanup;
+
+    array_init(return_value);
+    for (i = 0; i < stats_per_cpu; i++) {
+        if (params[i].type == VIR_TYPED_PARAM_ULLONG) {
+            add_assoc_double(return_value, params[i].field, ((double) params[i].value.ul) / 1000000000);
+        }
+    }
+
+    done = 1;
+
+    cleanup:
+    VIR_FREE(params);
+    if (!done)
+        RETURN_FALSE;
+}

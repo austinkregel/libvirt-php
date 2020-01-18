@@ -8,7 +8,7 @@
  </refnamediv>
 
  <refsect1 role="description">
-  &reftitle.description;
+  
   <methodsynopsis>
    <type>array</type><methodname>libvirt_storagevolume_create_xml</methodname>
    <methodparam ><type>resource</type><parameter>storagepool resource</parameter></methodparam>
@@ -20,7 +20,7 @@
  </refsect1>
 
  <refsect1 role="parameters">
-  &reftitle.parameters;
+  
  <para>
    <variablelist>
     <varlistentry>
@@ -44,17 +44,17 @@
  </refsect1>
 
  <refsect1 role="returnvalues">
-  &reftitle.returnvalues;
+  
   <!-- See also &return.success; -->
   <para>
-    Volume resource of the newly created volume. &false; on failure
+    Volume resource of the newly created volume.  on failure
   </para>
  </refsect1>
 
  
 
  <refsect1 role="examples">
-  &reftitle.examples;
+  
   <para>
    <example>
     <title><function>libvirt_storagevolume_create_xmlc</function> example</title>
@@ -80,7 +80,7 @@
 ?>
 ]]>
     </programlisting>
-    &example.outputs.similar;
+    
     <screen>
 <![CDATA[
 resource(3) of type (Libvirt volume)
@@ -91,7 +91,7 @@ resource(3) of type (Libvirt volume)
  </refsect1>
 
  <refsect1 role="seealso">
-  &reftitle.seealso;
+  
   <para>
    <simplelist>
     <member><function>libvirt_storagevolume_lookup_by_name</function></member>

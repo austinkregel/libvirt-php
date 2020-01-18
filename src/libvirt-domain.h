@@ -91,6 +91,7 @@
     PHP_FE(libvirt_domain_block_job_info,        arginfo_libvirt_domain_block_job_info)        \
     PHP_FE(libvirt_domain_block_job_abort,       arginfo_libvirt_domain_block_job_abort)       \
     PHP_FE(libvirt_domain_block_job_set_speed,   arginfo_libvirt_domain_block_job_set_speed)   \
+    PHP_FE(libvirt_domain_interface_addresses,   arginfo_libvirt_domain_interface_addresses)   \
     PHP_FE(libvirt_domain_interface_stats,       arginfo_libvirt_conn_path)                    \
     PHP_FE(libvirt_domain_get_connect,           arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_migrate,               arginfo_libvirt_domain_migrate)               \
@@ -118,6 +119,7 @@
     PHP_FE(libvirt_list_domain_resources,        arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_list_active_domain_ids,       arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_list_active_domains,          arginfo_libvirt_conn)                         \
+    PHP_FE(libvirt_list_inactive_domains,        arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_list_inactive_domains,        arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_get_cpu_total_stats,   arginfo_libvirt_conn)                         \
 
@@ -184,6 +186,7 @@ PHP_FUNCTION(libvirt_domain_block_resize);
 PHP_FUNCTION(libvirt_domain_block_job_info);
 PHP_FUNCTION(libvirt_domain_block_job_abort);
 PHP_FUNCTION(libvirt_domain_block_job_set_speed);
+PHP_FUNCTION(libvirt_domain_interface_addresses);
 PHP_FUNCTION(libvirt_domain_interface_stats);
 PHP_FUNCTION(libvirt_domain_get_connect);
 PHP_FUNCTION(libvirt_domain_migrate);

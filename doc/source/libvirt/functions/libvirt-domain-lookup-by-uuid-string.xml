@@ -8,7 +8,7 @@
  </refnamediv>
 
  <refsect1 role="description">
-  &reftitle.description;
+  
   <methodsynopsis>
    <type>resource</type><methodname>libvirt_domain_lookup_by_uuid_string</methodname>
    <methodparam ><type>resource</type><parameter>connection</parameter></methodparam>
@@ -21,7 +21,7 @@
  </refsect1>
 
  <refsect1 role="parameters">
-  &reftitle.parameters;
+  
    <para>
    <variablelist>
     <varlistentry>
@@ -45,17 +45,17 @@
  </refsect1>
 
  <refsect1 role="returnvalues">
-  &reftitle.returnvalues;
+  
   <!-- See also &return.success; -->
   <para>
-   &false; on failure and domain resource on success
+    on failure and domain resource on success
   </para>
  </refsect1>
 
  
 
  <refsect1 role="seealso">
-  &reftitle.seealso;
+  
   <para>
    <simplelist>
     <member><function>libvirt_domain_lookup_by_id</function></member>
