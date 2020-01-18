@@ -8,7 +8,7 @@
  </refnamediv>
 
  <refsect1 role="description">
-  &reftitle.description;
+  
   <methodsynopsis>
    <type>array</type><methodname>libvirt_storagepool_get_info</methodname>
    <methodparam ><type>resource</type><parameter>connection</parameter></methodparam>
@@ -24,7 +24,7 @@ This function returns values that may be bigger than 32bit integer limit. Please
  </refsect1>
 
  <refsect1 role="parameters">
-  &reftitle.parameters;
+  
  <para>
    <variablelist>
     <varlistentry>
@@ -40,17 +40,17 @@ This function returns values that may be bigger than 32bit integer limit. Please
  </refsect1>
 
  <refsect1 role="returnvalues">
-  &reftitle.returnvalues;
+  
   <!-- See also &return.success; -->
   <para>
-    Array with storagepool information. &false; on failure
+    Array with storagepool information.  on failure
   </para>
  </refsect1>
 
  
 
  <refsect1 role="examples">
-  &reftitle.examples;
+  
   <para>
    <example>
     <title><function>libvirt_storagepool_get_info</function> example</title>
@@ -69,7 +69,7 @@ This function returns values that may be bigger than 32bit integer limit. Please
 ?>
 ]]>
     </programlisting>
-    &example.outputs.similar;
+    
     <screen>
 <![CDATA[
 array(4) {
@@ -89,7 +89,7 @@ array(4) {
  </refsect1>
 
  <refsect1 role="seealso">
-  &reftitle.seealso;
+  
   <para>
    <simplelist>
     <member><function>libvirt_list_storagepools</function></member>

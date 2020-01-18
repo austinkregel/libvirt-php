@@ -8,7 +8,7 @@
  </refnamediv>
 
  <refsect1 role="description">
-  &reftitle.description;
+  
   <methodsynopsis>
    <type>array</type><methodname>libvirt_list_storagepools</methodname>
    <methodparam ><type>resource</type><parameter>connection</parameter></methodparam>
@@ -19,7 +19,7 @@
  </refsect1>
 
  <refsect1 role="parameters">
-  &reftitle.parameters;
+  
  <para>
    <variablelist>
     <varlistentry>
@@ -35,17 +35,17 @@
  </refsect1>
 
  <refsect1 role="returnvalues">
-  &reftitle.returnvalues;
+  
   <!-- See also &return.success; -->
   <para>
-    Array of storagepool names. &false; on failure
+    Array of storagepool names.  on failure
   </para>
  </refsect1>
 
  
 
  <refsect1 role="examples">
-  &reftitle.examples;
+  
   <para>
    <example>
     <title><function>libvirt_list_storagepools</function> example</title>
@@ -63,7 +63,7 @@
 ?>
 ]]>
     </programlisting>
-    &example.outputs.similar;
+    
     <screen>
 <![CDATA[
 array(2) {
@@ -79,7 +79,7 @@ array(2) {
  </refsect1>
 
  <refsect1 role="seealso">
-  &reftitle.seealso;
+  
   <para>
    <simplelist>
     <member><function>libvirt_storagepool_lookup_by_name</function></member>
