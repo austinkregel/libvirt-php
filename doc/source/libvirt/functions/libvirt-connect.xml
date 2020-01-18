@@ -7,7 +7,7 @@
  </refnamediv>
 
  <refsect1 role="description">
- &reftitle.description;
+ 
   <methodsynopsis>
    <type>resource</type><methodname>libvirt_connect</methodname>
    <methodparam  choice="opt"><type>string</type><parameter>url</parameter><initializer>NULL</initializer></methodparam>
@@ -21,7 +21,7 @@
 
 
  <refsect1 role="parameters">
-  &reftitle.parameters;
+  
   <para>
    <variablelist>
     <varlistentry>
@@ -36,7 +36,7 @@
      <term><parameter>readonly</parameter></term>
      <listitem>
       <para>
-	If &true; (default) connection is made readonly.
+	If  (default) connection is made readonly.
       </para>
      </listitem>
     </varlistentry>
@@ -55,22 +55,22 @@
 
 
  <refsect1 role="returnvalues">
-  &reftitle.returnvalues;
+  
   <!-- See also &return.success; -->
   <para>
-   Returns  &false;  on failure and connection resource on success. This connection resource must be used for all subsequent calls.
+   Returns    on failure and connection resource on success. This connection resource must be used for all subsequent calls.
   </para>
  </refsect1>
 
  <refsect1 role="errors">
-  &reftitle.errors;
+  
   <para>
    This function returns errors via PHP E_* error mechanism.
   </para>
  </refsect1>
 
  <refsect1 role="notes">
-  &reftitle.notes;
+  
   <note>
   <title >Libvirt version</title>
   <para>
@@ -103,7 +103,7 @@
 
  
  <refsect1 role="examples">
-  &reftitle.examples;
+  
   <para>
    <example>
     <title><function>libvirt_connect</function> example</title>
@@ -127,7 +127,7 @@ print_r($res3); printf ("\n");
 ?>
 ]]>
     </programlisting>
-    &example.outputs.similar;
+    
     <screen>
 <![CDATA[
 Resource id #4

@@ -10,7 +10,7 @@
 
 
  <refsect1 role="description">
-  &reftitle.description;
+  
   <methodsynopsis>
    <type>array</type><methodname>libvirt_domain_get_job_info</methodname>
    <methodparam ><type>resource</type><parameter>domain</parameter></methodparam>
@@ -34,7 +34,7 @@ This function returns values that may be bigger than 32bit integer limit. Please
  </refsect1>
 
  <refsect1 role="parameters">
-  &reftitle.parameters;
+  
  <para>
    <variablelist>
     <varlistentry>
@@ -51,15 +51,15 @@ This function returns values that may be bigger than 32bit integer limit. Please
 
 
  <refsect1 role="returnvalues">
-  &reftitle.returnvalues;
+  
   <!-- See also &return.success; -->
   <para>
-   Associative array on success and &false; on failure.
+   Associative array on success and  on failure.
   </para>
  </refsect1>
 
 <refsect1 role="examples">
-  &reftitle.examples;
+  
   <para>
    <example>
     <title><function>libvirt_domain_get_job_info</function> example</title>
@@ -83,7 +83,7 @@ This function returns values that may be bigger than 32bit integer limit. Please
 ?>
 ]]>
     </programlisting>
-    &example.outputs.similar;
+    
     <screen>
 <![CDATA[
 Domain found
@@ -113,7 +113,7 @@ Array
 
 
  <refsect1 role="seealso">
-  &reftitle.seealso;
+  
   <para>
    <simplelist>
     <member><function>libvirt_domain_migrate</function></member>

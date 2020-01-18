@@ -8,7 +8,7 @@
  </refnamediv>
 
  <refsect1 role="description">
-  &reftitle.description;
+  
   <methodsynopsis>
    <type>array</type><methodname>libvirt_storagevolume_get_xml_desc</methodname>
    <methodparam ><type>resource</type><parameter>volume resource</parameter></methodparam>
@@ -19,7 +19,7 @@
  </refsect1>
 
  <refsect1 role="parameters">
-  &reftitle.parameters;
+  
  <para>
    <variablelist>
     <varlistentry>
@@ -35,17 +35,17 @@
  </refsect1>
 
  <refsect1 role="returnvalues">
-  &reftitle.returnvalues;
+  
   <!-- See also &return.success; -->
   <para>
-    String with volume information in XML format. &false; on failure
+    String with volume information in XML format.  on failure
   </para>
  </refsect1>
 
  
 
  <refsect1 role="examples">
-  &reftitle.examples;
+  
   <para>
    <example>
     <title><function>libvirt_storagevolume_get_xml_desc</function> example</title>
@@ -65,7 +65,7 @@
 ?>
 ]]>
     </programlisting>
-    &example.outputs.similar;
+    
     <screen>
 <![CDATA[
 string(451) "<volume>
@@ -94,7 +94,7 @@ string(451) "<volume>
  </refsect1>
 
  <refsect1 role="seealso">
-  &reftitle.seealso;
+  
   <para>
    <simplelist>
     <member><function>libvirt_storagevolume_lookup_by_name</function></member>

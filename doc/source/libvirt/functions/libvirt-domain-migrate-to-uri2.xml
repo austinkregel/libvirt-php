@@ -8,7 +8,7 @@
  </refnamediv>
 
  <refsect1 role="description">
-  &reftitle.description;
+  
   <methodsynopsis>
    <type>bool</type><methodname>libvirt_domain_migrate_to_uri</methodname>
    <methodparam ><type>resource</type><parameter>domain</parameter></methodparam>
@@ -30,15 +30,15 @@
  </refsect1>
 
  <refsect1 role="returnvalues">
-  &reftitle.returnvalues;
+  
   <!-- See also &return.success; -->
   <para>
-   &true;  on success and &false; on failure.
+     on success and  on failure.
   </para>
  </refsect1>
 
 <refsect1 role="examples">
-  &reftitle.examples;
+  
   <para>
    <example>
     <title><function>libvirt_domain_migrate_to_uri2</function> example</title>
@@ -100,7 +100,7 @@
 
 
  <refsect1 role="seealso">
-  &reftitle.seealso;
+  
   <para>
    <simplelist>
     <member><function>libvirt_domain_migrate_to_uri</function></member>
