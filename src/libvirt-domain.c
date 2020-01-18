@@ -147,10 +147,18 @@ PHP_FUNCTION(libvirt_domain_new)
     tmp = installation_get_xml(conn->conn, name, memMB, maxmemMB,
                                NULL, NULL, vcpus, iso_image,
                                vmDisks, numDisks, vmNetworks, numNets,
-                               flags);
+                               flags
+    TSRMLS_CC);
+
     if (tmp == NULL) {
-        DPRINTF("%s: Cannot get installation XML\n", PHPFUNC);
-        set_error("Cannot get installation XML");
+        DPRINTF("%s: Cannot get installation XML, it is null\n", PHPFUNC);
+        set_error("Cannot get installation XML, it seems to be null" TSRMLS_CC);
+        goto error;
+    }
+
+    if (tmp[0] != '<') {
+        DPRINTF("%s: %s\n", PHPFUNC, tmp);
+        set_error(tmp TSRMLS_CC);
         goto error;
     }
 
@@ -218,16 +226,23 @@ PHP_FUNCTION(libvirt_domain_new)
     tmp = installation_get_xml(conn->conn, name, memMB, maxmemMB,
                                NULL, uuid, vcpus, NULL,
                                vmDisks, numDisks, vmNetworks, numNets,
-                               flags);
+                               flags TSRMLS_CC);
+
     if (tmp == NULL) {
         DPRINTF("%s: Cannot get installation XML\n", PHPFUNC);
         set_error("Cannot get installation XML");
         goto error;
     }
 
+    if (tmp[0] != '<') {
+        DPRINTF("%s: %s\n", PHPFUNC, tmp);
+        set_error(tmp TSRMLS_CC);
+        goto error;
+    }
+
     domainUpdated = virDomainDefineXML(conn->conn, tmp);
     if (domainUpdated == NULL) {
-        set_error_if_unset("Cannot update domain definition");
+        set_error_if_unset("Cannot update domain definition, definition null" TSRMLS CC);
         DPRINTF("%s: Cannot update domain definition "
                 "(name = '%s', uuid = '%s', error = '%s')\n",
                 PHPFUNC, name, uuid, LIBVIRT_G(last_error));

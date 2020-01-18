@@ -897,7 +897,7 @@ PHP_MINFO_FUNCTION(libvirt)
     snprintf(path, sizeof(path), "%lu", (unsigned long)LIBVIRT_G(max_connections_ini));
     php_info_print_table_row(2, "Max. connections", path);
 
-    if (!(access(LIBVIRT_G(iso_path_ini), F_OK) == 0))
+    if (!access(LIBVIRT_G(iso_path_ini), F_OK) == 0)
         snprintf(path, sizeof(path), "%s - path is invalid. To set the valid path modify the libvirt.iso_path in your php.ini configuration!",
                  LIBVIRT_G(iso_path_ini));
     else
@@ -905,7 +905,7 @@ PHP_MINFO_FUNCTION(libvirt)
 
     php_info_print_table_row(2, "ISO Image path", path);
 
-    if (!(access(LIBVIRT_G(image_path_ini), F_OK) == 0))
+    if (!access(LIBVIRT_G(image_path_ini), F_OK) == 0)
         snprintf(path, sizeof(path), "%s - path is invalid. To set the valid path modify the libvirt.image_path in your php.ini configuration!",
                  LIBVIRT_G(image_path_ini));
     else
@@ -2483,12 +2483,13 @@ char *installation_get_xml(virConnectPtr conn, char *name, int memMB,
     char features[128] = { 0 };
     char *tmp = NULL;
     char *generated_uuid = NULL;
+    char* errorBuffer = malloc(150);
     char type[64] = { 0 };
     int rv;
 
     if (conn == NULL) {
-        DPRINTF("%s: Invalid libvirt connection pointer\n", __FUNCTION__);
-        return NULL;
+        sprintf(errorBuffer, "%s: Invalid libvirt connection pointer\n", __FUNCTION__);
+        return errorBuffer;
     }
 
     if (domain_flags & DOMAIN_FLAG_FEATURE_ACPI)
@@ -2499,18 +2500,18 @@ char *installation_get_xml(virConnectPtr conn, char *name, int memMB,
         strcat(features, "<pae/>");
 
     if (arch == NULL) {
-        arch = connection_get_arch(conn);
+        arch = connection_get_arch(conn TSRMLS_CC);
         DPRINTF("%s: No architecture defined, got host arch of '%s'\n", __FUNCTION__, arch);
     }
 
-    if (!(emulator = connection_get_emulator(conn, arch))) {
-        DPRINTF("%s: Cannot get emulator\n", __FUNCTION__);
-        return NULL;
+    if (!(emulator = connection_get_emulator(conn, arch TSRMLS_CC))) {
+        sprintf(errorBuffer, "%s: Cannot get emulator\n", __FUNCTION__);
+        return errorBuffer;
     }
 
     if (iso_image && access(iso_image, R_OK) != 0) {
-        DPRINTF("%s: Installation image %s doesn't exist\n", __FUNCTION__, iso_image);
-        return NULL;
+        sprintf(errorBuffer, "%s: Installation image %s doesn't exist\n", __FUNCTION__, iso_image);
+        return errorBuffer;
     }
 
     tmp = connection_get_domain_type(conn, arch);
@@ -2627,7 +2628,7 @@ char *installation_get_xml(virConnectPtr conn, char *name, int memMB,
     VIR_FREE(tmp);
     VIR_FREE(arch);
     if (rv < 0)
-        return NULL;
+        return "Error: Couldn't process if/else stuff...";
 
     return xml;
 }
@@ -2963,3 +2964,53 @@ PHP_FUNCTION(libvirt_logfile_set)
     RETURN_TRUE;
 }
 #endif
+
+/*
+ * Function name:   libvirt_domain_get_cpu_total_stats
+ * Since version:   0.5.5
+ * Description:     Function is used to get statistics relating to CPU usage attributable to a single domain
+ * Arguments:       @res [resource]: libvirt connection resource
+ * Returns:         array, in second unit
+ */
+PHP_FUNCTION(libvirt_domain_get_cpu_total_stats)
+{
+    php_libvirt_domain *domain = NULL;
+    zval *zdomain;
+
+    virTypedParameterPtr params = NULL;
+    int max_id, cpu = 0, show_count = -1, nparams = 0, stats_per_cpu, done = 0, i;
+
+    GET_DOMAIN_FROM_ARGS("r", &zdomain);
+
+
+    /* get supported num of parameter for total statistics */
+    if ((nparams = virDomainGetCPUStats(domain->domain, NULL, 0, -1, 1, 0)) < 0)
+        goto cleanup;
+
+    if (!nparams) {
+        goto cleanup;
+    }
+
+    params = calloc(nparams, sizeof(virTypedParameter));
+
+    if (params == NULL)
+        goto cleanup;
+
+    /* passing start_cpu == -1 gives us domain's total status */
+    if ((stats_per_cpu = virDomainGetCPUStats(domain->domain, params, nparams, -1, 1, 0)) < 0)
+        goto cleanup;
+
+    array_init(return_value);
+    for (i = 0; i < stats_per_cpu; i++) {
+        if (params[i].type == VIR_TYPED_PARAM_ULLONG) {
+            add_assoc_double(return_value, params[i].field, ((double) params[i].value.ul) / 1000000000);
+        }
+    }
+
+    done = 1;
+
+    cleanup:
+    VIR_FREE(params);
+    if (!done)
+        RETURN_FALSE;
+}
