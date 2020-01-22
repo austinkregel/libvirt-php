@@ -123,7 +123,6 @@
     PHP_FE(libvirt_list_active_domain_ids,       arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_list_active_domains,          arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_list_inactive_domains,        arginfo_libvirt_conn)                         \
-    PHP_FE(libvirt_list_inactive_domains,        arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_get_cpu_total_stats,   arginfo_libvirt_conn)                         \
 
 extern int le_libvirt_domain;
