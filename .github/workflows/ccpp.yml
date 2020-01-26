@@ -1,0 +1,22 @@
+name: C/C++ CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    - name: install-prereqs
+      run: | 
+        apt install build-essential autoconf automake libtool bison re2c pkg-config libvirt-dev libxml2-dev xsltproc libxml2-utils libmagickwand-dev
+    - name: autogen
+      run: ./autogen.sh
+    - name: make
+      run: make
+    - name: make check
+      run: make check
+    - name: make distcheck
+      run: make distcheck
