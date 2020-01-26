@@ -9,9 +9,6 @@ jobs:
     
     steps:
     - uses: actions/checkout@v1
-    - name: install-prereqs
-      run: | 
-        apt install -y build-essential autoconf automake libtool bison re2c pkg-config libvirt-dev libxml2-dev xsltproc libxml2-utils libmagickwand-dev
     - name: autogen
       run: ./autogen.sh
     - name: make
