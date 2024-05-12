@@ -76,6 +76,7 @@
     PHP_FE(libvirt_domain_undefine_flags,        arginfo_libvirt_conn_flags)                   \
     PHP_FE(libvirt_domain_reboot,                arginfo_libvirt_conn_flags)                   \
     PHP_FE(libvirt_domain_reset,                 arginfo_libvirt_conn_flags)                   \
+    PHP_FE(libvirt_domain_shutdown_flags,        arginfo_libvirt_conn_flags)                   \
     PHP_FE(libvirt_domain_define_xml,            arginfo_libvirt_conn_xml)                     \
     PHP_FE(libvirt_domain_create_xml,            arginfo_libvirt_conn_xml)                     \
     PHP_FE(libvirt_domain_xml_from_native,       arginfo_libvirt_domain_xml_from_native)       \
@@ -167,6 +168,7 @@ PHP_FUNCTION(libvirt_domain_destroy);
 PHP_FUNCTION(libvirt_domain_resume);
 PHP_FUNCTION(libvirt_domain_core_dump);
 PHP_FUNCTION(libvirt_domain_shutdown);
+PHP_FUNCTION(libvirt_domain_shutdown_flags);
 PHP_FUNCTION(libvirt_domain_suspend);
 PHP_FUNCTION(libvirt_domain_managedsave);
 PHP_FUNCTION(libvirt_domain_undefine);
