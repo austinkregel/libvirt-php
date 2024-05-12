@@ -1,0 +1,142 @@
+# THIS FILE WAS AUTO-GENERATED
+#
+#  $ lcitool manifest ci/manifest.yml
+#
+# https://gitlab.com/libvirt/libvirt-ci
+
+
+# Native build jobs
+
+x86_64-alpine-318:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-alpine-318-container
+      optional: true
+  allow_failure: false
+  variables:
+    CONFIGURE_ARGS: --with-php=/usr/bin/php82 --with-php-config=/usr/bin/php-config82
+    NAME: alpine-318
+    TARGET_BASE_IMAGE: docker.io/library/alpine:3.18
+
+
+x86_64-alpine-319:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-alpine-319-container
+      optional: true
+  allow_failure: false
+  variables:
+    CONFIGURE_ARGS: --with-php=/usr/bin/php83 --with-php-config=/usr/bin/php-config83
+    NAME: alpine-319
+    TARGET_BASE_IMAGE: docker.io/library/alpine:3.19
+
+
+x86_64-alpine-edge:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-alpine-edge-container
+      optional: true
+  allow_failure: true
+  variables:
+    CONFIGURE_ARGS: --with-php=/usr/bin/php83 --with-php-config=/usr/bin/php-config83
+    NAME: alpine-edge
+    TARGET_BASE_IMAGE: docker.io/library/alpine:edge
+
+
+x86_64-debian-12-git:
+  extends: .native_git_build_job
+  needs:
+    - job: x86_64-debian-12-container
+      optional: true
+  allow_failure: false
+  variables:
+    NAME: debian-12
+    TARGET_BASE_IMAGE: docker.io/library/debian:12-slim
+
+
+x86_64-debian-sid:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-debian-sid-container
+      optional: true
+  allow_failure: true
+  variables:
+    NAME: debian-sid
+    TARGET_BASE_IMAGE: docker.io/library/debian:sid-slim
+
+
+x86_64-fedora-38:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-fedora-38-container
+      optional: true
+  allow_failure: false
+  variables:
+    NAME: fedora-38
+    TARGET_BASE_IMAGE: registry.fedoraproject.org/fedora:38
+
+
+x86_64-fedora-39:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-fedora-39-container
+      optional: true
+  allow_failure: false
+  variables:
+    NAME: fedora-39
+    TARGET_BASE_IMAGE: registry.fedoraproject.org/fedora:39
+
+
+x86_64-fedora-rawhide:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-fedora-rawhide-container
+      optional: true
+  allow_failure: true
+  variables:
+    NAME: fedora-rawhide
+    TARGET_BASE_IMAGE: registry.fedoraproject.org/fedora:rawhide
+
+
+x86_64-opensuse-leap-15:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-opensuse-leap-15-container
+      optional: true
+  allow_failure: false
+  variables:
+    NAME: opensuse-leap-15
+    TARGET_BASE_IMAGE: registry.opensuse.org/opensuse/leap:15.5
+
+
+x86_64-opensuse-tumbleweed:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-opensuse-tumbleweed-container
+      optional: true
+  allow_failure: true
+  variables:
+    NAME: opensuse-tumbleweed
+    TARGET_BASE_IMAGE: registry.opensuse.org/opensuse/tumbleweed:latest
+
+
+x86_64-ubuntu-2004:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-ubuntu-2004-container
+      optional: true
+  allow_failure: false
+  variables:
+    NAME: ubuntu-2004
+    TARGET_BASE_IMAGE: docker.io/library/ubuntu:20.04
+
+
+x86_64-ubuntu-2204:
+  extends: .native_build_job
+  needs:
+    - job: x86_64-ubuntu-2204-container
+      optional: true
+  allow_failure: false
+  variables:
+    NAME: ubuntu-2204
+    TARGET_BASE_IMAGE: docker.io/library/ubuntu:22.04

@@ -1,0 +1,63 @@
+projects:
+  - libvirt-php
+  - libvirt+dist
+
+gitlab:
+  namespace: libvirt
+  project: libvirt-php
+
+targets:
+  alpine-318:
+    jobs:
+      - arch: x86_64
+        variables:
+          CONFIGURE_ARGS: --with-php=/usr/bin/php82 --with-php-config=/usr/bin/php-config82
+
+  alpine-319:
+    jobs:
+      - arch: x86_64
+        variables:
+          CONFIGURE_ARGS: --with-php=/usr/bin/php83 --with-php-config=/usr/bin/php-config83
+
+  alpine-edge:
+    jobs:
+      - arch: x86_64
+        allow-failure: true
+        variables:
+          CONFIGURE_ARGS: --with-php=/usr/bin/php83 --with-php-config=/usr/bin/php-config83
+
+  debian-12:
+    projects:
+      - libvirt-php
+      - libvirt+minimal
+
+    jobs:
+      - arch: x86_64
+        template: .native_git_build_job
+        suffix: -git
+
+  debian-sid:
+    jobs:
+      - arch: x86_64
+        allow-failure: true
+
+
+  fedora-38: x86_64
+
+  fedora-39: x86_64
+
+  fedora-rawhide:
+    jobs:
+      - arch: x86_64
+        allow-failure: true
+
+  opensuse-leap-15: x86_64
+
+  opensuse-tumbleweed:
+    jobs:
+      - arch: x86_64
+        allow-failure: true
+
+  ubuntu-2004: x86_64
+
+  ubuntu-2204: x86_64

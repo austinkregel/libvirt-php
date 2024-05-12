@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <stdbool.h>
+#include <getopt.h>
 
 typedef struct func_t {
     char *name;
@@ -127,6 +128,7 @@ void free_functions(int function_number)
     for (i = 0; i <= function_number; i++) {
         for (j = 0; j < functions[i].num_args; j++)
             free(functions[i].args[j]);
+        free(functions[i].args);
         free(functions[i].name);
         free(functions[i].desc);
         free(functions[i].returns);
@@ -145,40 +147,25 @@ int count_functions(int num_funcs, int private)
     return num;
 }
 
-int main(int argc, char *argv[])
+
+static void
+parse_source(const char *in,
+             int *function_number)
 {
+    FILE *fp;
     char line[1024] = { 0 };
     bool in_comment = false;
-    int function_number = -1;
     int arg_number = 0;
-    int private = 0;
-    int idx = 1;
-    int i, j;
-    FILE *fp;
 
-    if (argc < 3) {
-        fprintf(stderr, "Syntax: %s [-p|--private] source-file output-in-file\n", argv[0]);
-        return 1;
-    }
+    if (access(in, R_OK) != 0)
+        bail_error("Cannot open file %s", in);
 
-    if ((strcmp(argv[1], "-p") == 0) || (strcmp(argv[1], "--private") == 0)) {
-        if (argc < 4) {
-            fprintf(stderr, "Syntax: %s [-p|--private] source-file output-in-file\n", argv[0]);
-            return 1;
-        }
-
-        private = 1;
-        idx++;
-    }
-
-    if (access(argv[idx], R_OK) != 0)
-        bail_error("Cannot open file %s", argv[1]);
-
-    if (!(functions = (func_t *)malloc(sizeof(func_t))))
+    if (!functions &&
+        !(functions = (func_t *)calloc(sizeof(func_t), 1)))
         bail_error("Out of memory");
 
-    if (!(fp = fopen(argv[idx], "r")))
-        bail_error("Error while opening %s", argv[1]);
+    if (!(fp = fopen(in, "r")))
+        bail_error("Error while opening %s", in);
 
     while (true) {
         memset(line, 0, sizeof(line));
@@ -186,7 +173,7 @@ int main(int argc, char *argv[])
         if (!fgets(line, sizeof(line), fp)) {
             if (feof(fp))
                 break;
-            bail_error("Unable to read form %s", argv[1]);
+            bail_error("Unable to read form %s", in);
         }
 
         /* Strip new line characters */
@@ -194,25 +181,36 @@ int main(int argc, char *argv[])
             line[strlen(line) - 1] = 0;
 
         if (strcmp(line, "/*") == 0) {
-            function_number++;
+            (*function_number)++;
             in_comment = 1;
             if (!(functions = (func_t *) realloc(functions,
-                                                 sizeof(func_t) * (function_number + 1))))
+                                                 sizeof(func_t) * (*function_number + 1))))
                 bail_error("Out of memory");
-            functions[function_number].name = NULL;
-            functions[function_number].num_args = 0;
+            memset(functions + *function_number, 0, sizeof(*functions));
+            functions[*function_number].name = NULL;
+            functions[*function_number].num_args = 0;
         } else {
             if (strcmp(line, " */") == 0)
                 in_comment = 0;
             else if (in_comment)
-                parse_comment(line, function_number, &arg_number);
+                parse_comment(line, *function_number, &arg_number);
         }
     }
     fclose(fp);
+}
 
-    if (!(fp = fopen(argv[idx+1], "w"))) {
+
+static void
+generate_output(const char *out,
+                int function_number,
+                int private)
+{
+    FILE *fp;
+    int i;
+
+    if (!(fp = fopen(out, "w"))) {
         free_functions(function_number);
-        bail_error("Cannot write %s", argv[2]);
+        bail_error("Cannot write %s", out);
     }
 
     fprintf(fp, "<?xml version=\"1.0\"?>\n<html>\n  <body>\n");
@@ -221,6 +219,8 @@ int main(int argc, char *argv[])
     fprintf(fp, "<pre>Total number of functions: %d. Functions supported are:<br /><br />\n", count_functions(function_number, private));
     for (i = 0; i <= function_number; i++) {
         if ((functions[i].name != NULL) && (functions[i].private == private)) {
+            int j;
+
             fprintf(fp, "\t<code class=\"docref\">%s</code>(", functions[i].name);
 
             for (j = 0; j < functions[i].num_args; j++) {
@@ -251,6 +251,8 @@ int main(int argc, char *argv[])
 
     for (i = 0; i <= function_number; i++) {
         if ((functions[i].name != NULL) && (functions[i].private == private)) {
+            int j;
+
             fprintf(fp, "<h3><a name=\"%s\"><code>%s</code></a></h3>\n", functions[i].name, functions[i].name);
             fprintf(fp, "<pre class=\"programlisting\">%s(", functions[i].name);
 
@@ -309,8 +311,52 @@ int main(int argc, char *argv[])
         }
     }
     fclose(fp);
+}
+
+
+int main(int argc, char *argv[])
+{
+    int function_number = -1;
+    int private = 0;
+    char *output = NULL;
+    int arg;
+    struct option opt[] = {
+        {"private", no_argument, NULL, 'p'},
+        {"output", required_argument, NULL, 'o'},
+        {NULL, 0, NULL, 0}
+    };
+
+    while ((arg = getopt_long(argc, argv, ":o:p", opt, NULL)) != -1) {
+        switch (arg) {
+        case 'p':
+            private = 1;
+            break;
+        case 'o':
+            free(output);
+            if (!(output = strdup(optarg)))
+                bail_error("Out of memory");
+            break;
+        case '?':
+            bail_error("Unknown option");
+        }
+    }
+
+    if (argc == optind) {
+        fprintf(stderr, "Syntax: %s [-p|--private] source-file output-in-file\n", argv[0]);
+        return 1;
+    }
+
+    while (argv[optind])
+        parse_source(argv[optind++], &function_number);
+
+    if (!output &&
+        !(output = strdup("/dev/stdout")))
+        bail_error("Out of memory");
+
+    generate_output(output, function_number, private);
 
     free_functions(function_number);
+    free(output);
     printf("Documentation has been generated successfully\n");
     return 0;
 }

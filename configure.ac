@@ -1,13 +1,13 @@
-AC_INIT([libvirt-php], [0.5.5], [libvir-list@redhat.com], [], [http://libvirt.org])
+AC_INIT([libvirt-php],[0.5.9],[devel@lists.libvirt.org],[],[https://libvirt.org])
 AC_CONFIG_SRCDIR([src/libvirt-php.c])
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_MACRO_DIR([m4])
-AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability])
+AM_INIT_AUTOMAKE([-Wall -Werror -Wno-portability tar-pax no-dist-gzip dist-xz])
 AM_MAINTAINER_MODE([enable])
-AC_GNU_SOURCE
+AC_USE_SYSTEM_EXTENSIONS
 
 m4_ifndef([LT_INIT], [
-  AM_PROG_LIBTOOL
+  LT_INIT
 ], [
   LT_INIT([shared disable-static])
 ])
@@ -71,7 +71,7 @@ LIBXML_CFLAGS=""
 LIBXML_LIBS=""
 LIBXML_FOUND="no"
 
-AC_ARG_WITH([libxml], AC_HELP_STRING([--with-libxml=@<:@PFX@:>@], [libxml2 location]))
+AC_ARG_WITH([libxml], AS_HELP_STRING([--with-libxml=@<:@PFX@:>@], [libxml2 location]))
 if test "x$with_libxml" = "xno" ; then
     AC_MSG_CHECKING(for libxml2 libraries >= $LIBXML_REQUIRED)
     AC_MSG_ERROR([libxml2 >= $LIBXML_REQUIRED is required for libvirt])
@@ -113,7 +113,7 @@ AC_DEFINE_UNQUOTED(VERSION_MICRO, $VERSION_MICRO, [Micro version number of packa
 
 dnl Specific XML catalog file for validation of generated html
 AC_ARG_WITH([xml-catalog-file],
-            [AC_HELP_STRING([--with-xml-catalog-file=path],
+            [AS_HELP_STRING([--with-xml-catalog-file=path],
                 [path to XML catalog file for validating
                  generated html, default /etc/xml/catalog])],
             [XML_CATALOG_FILE=$withval],
@@ -138,17 +138,38 @@ fi
 
 
 dnl Specific dir for HTML output ?
-AC_ARG_WITH([html-dir], [AC_HELP_STRING([--with-html-dir=path],
+AC_ARG_WITH([html-dir], [AS_HELP_STRING([--with-html-dir=path],
             [path to base html directory, default $datadir/doc/html])],
             [HTML_DIR=$withval], [HTML_DIR='$(datadir)/doc'])
 
-AC_ARG_WITH([html-subdir], [AC_HELP_STRING([--with-html-subdir=path],
+AC_ARG_WITH([html-subdir], [AS_HELP_STRING([--with-html-subdir=path],
             [directory used under html-dir, default $PACKAGE-$VERSION/html])],
             [test "x$withval" != "x" && HTML_DIR="$HTML_DIR/$withval"],
             [HTML_DIR="$HTML_DIR/\$(PACKAGE)-\$(VERSION)/html"])
 AC_SUBST([HTML_DIR])
 
-AC_ARG_WITH([php-config], [AC_HELP_STRING([--with-php-config=path],
+AC_ARG_WITH([php], [AS_HELP_STRING([--with-php=path],
+            [php executable name, by default search for 'php' in $PATH])])
+
+if test "x$with_php" != "x" ; then
+    AC_MSG_CHECKING(for php executable)
+    PHPEXECUTABLE=$with_php
+    AC_MSG_RESULT($with_php)
+else
+    AC_PATH_PROG([PHPEXECUTABLE], [php], [no])
+fi
+
+if test "x$PHPEXECUTABLE" = "xno"; then
+    AC_MSG_ERROR([php not found; please install the PHP binary])
+fi
+
+AC_MSG_CHECKING(whether $PHPEXECUTABLE is executable)
+if test ! -x $PHPEXECUTABLE ; then
+    AC_MSG_ERROR([php binary is not executable])
+fi
+AC_MSG_RESULT(yes)
+
+AC_ARG_WITH([php-config], [AS_HELP_STRING([--with-php-config=path],
             [path to php-config, default search all paths])])
 
 if test "x$with_php_config" != "x" ; then
@@ -163,9 +184,13 @@ if test "x$PHPCONFIG" = "xno"; then
     AC_MSG_ERROR([php-config not found; please install the PHP SDK])
 fi
 
-AC_PATH_PROG([PHPIZE], [phpize], [no], [`$PHPCONFIG --prefix`/bin$PATH_SEPARATOR$PATH])
-if test "x$PHPIZE" = "xno"; then
-    AC_MSG_ERROR([phpize not found; please install the PHP SDK])
+AC_MSG_CHECKING(for PHP version)
+PHPVERSION=$($PHPCONFIG --version)
+PHPVERNUM=$($PHPCONFIG --vernum)
+AC_MSG_RESULT($PHPVERSION)
+
+if test "$PHPVERNUM" -lt 70000 ; then
+    AC_MSG_ERROR([PHP too old; please upgrade to 7.0.0 at least])
 fi
 
 PHP_CFLAGS=$($PHPCONFIG --includes)
@@ -175,8 +200,6 @@ AC_SUBST(PHP_LDFLAGS)
 
 LIBVIRT_CHECK_PHP_EXTENSIONDIR
 LIBVIRT_CHECK_PHP_CONFDIR
-
-LIBVIRT_CHECK_PHP_EXTENSION([imagick])
 
 OS=`uname`
 if test "$OS" = "Darwin"; then
@@ -188,10 +211,14 @@ else
 fi
 
 AC_SUBST([SHLIB_FLAGS])
-AC_SUBST([PHPIZE])
 AC_SUBST([PHPCONFIG])
+AC_SUBST([PHPEXECUTABLE])
 AC_CONFIG_FILES([Makefile tools/Makefile src/Makefile \
                  tests/Makefile docs/Makefile libvirt-php.spec])
+
+AC_CONFIG_FILES([tests/runtests.sh], [chmod +x tests/runtests.sh])
+AC_CONFIG_FILES([tests/check_parameters.sh], [chmod +x tests/check_parameters.sh])
+
 AC_OUTPUT
 
 LIBVIRT_RESULT_PHP_EXTENSIONDIR

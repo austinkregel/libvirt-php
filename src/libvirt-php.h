@@ -23,17 +23,6 @@
 #define COMPILE_DL_LIBVIRT
 #endif
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#ifndef VERSION
-#define VERSION "0.5.5"
-#define VERSION_MAJOR 0
-#define VERSION_MINOR 5
-#define VERSION_MICRO 5
-#endif
-
 #include <libvirt/libvirt.h>
 #include <libvirt/virterror.h>
 #include <libvirt/libvirt-qemu.h>
@@ -134,13 +123,6 @@ typedef struct tVMNetwork {
     char *model;
 } tVMNetwork;
 
-typedef struct _php_libvirt_hash_key_info {
-    char *name;
-    unsigned int length;
-    zend_ulong index;
-    unsigned int type;
-} php_libvirt_hash_key_info;
-
 ZEND_BEGIN_MODULE_GLOBALS(libvirt)
     char *last_error;
     int last_error_code;
@@ -158,7 +140,7 @@ ZEND_BEGIN_MODULE_GLOBALS(libvirt)
     int binding_resources_count;
 ZEND_END_MODULE_GLOBALS(libvirt)
 
-ZEND_DECLARE_MODULE_GLOBALS(libvirt)
+ZEND_EXTERN_MODULE_GLOBALS(libvirt)
 
 /* Private definitions */
 void set_error(char *msg TSRMLS_DC);
@@ -167,25 +149,27 @@ void set_error_if_unset(char *msg TSRMLS_DC);
 void reset_error(TSRMLS_D);
 int count_resources(int type TSRMLS_DC);
 int resource_change_counter(int type, virConnectPtr conn, void *mem,
-                            int inc TSRMLS_DC);
+                            int inc);
 int check_resource_allocation(virConnectPtr conn, int type,
-                              void *mem TSRMLS_DC);
-void free_resource(int type, void *mem TSRMLS_DC);
-char *connection_get_emulator(virConnectPtr conn, char *arch TSRMLS_DC);
+                              void *mem);
+void free_resource(int type, void *mem);
+char *connection_get_emulator(virConnectPtr conn, char *arch);
 int is_local_connection(virConnectPtr conn);
-tTokenizer tokenize(char *string, char *by);
+tTokenizer tokenize(const char *string, char *by);
 void free_tokens(tTokenizer t);
-int set_logfile(char *filename, long maxsize TSRMLS_DC);
+int set_logfile(char *filename, long maxsize);
 char *get_string_from_xpath(char *xml, char *xpath, zval **val, int *retVal);
 char *get_node_string_from_xpath(char *xml, char *xpath);
 char **get_array_from_xpath(char *xml, char *xpath, int *num);
 void parse_array(zval *arr, tVMDisk *disk, tVMNetwork *network);
+void tVMDiskClear(tVMDisk *disk);
+void tVMNetworkClear(tVMNetwork *network);
 char *installation_get_xml(virConnectPtr conn, char *name, int memMB,
                            int maxmemMB, char *arch, char *uuid, int vCpus,
                            char *iso_image, tVMDisk *disks, int numDisks,
                            tVMNetwork *networks, int numNetworks,
-                           int domain_flags TSRMLS_DC);
-void set_vnc_location(char *msg TSRMLS_DC);
+                           int domain_flags);
+void set_vnc_location(char *msg);
 int streamSink(virStreamPtr st ATTRIBUTE_UNUSED,
                const char *bytes, size_t nbytes, void *opaque);
 const char *get_feature_binary(const char *name);

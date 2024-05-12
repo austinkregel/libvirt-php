@@ -4,6 +4,8 @@
  * See COPYING for the license of this software
  */
 
+#include <config.h>
+
 #include <libvirt/libvirt.h>
 
 #include "libvirt-php.h"
@@ -11,15 +13,17 @@
 
 DEBUG_INIT("network");
 
+int le_libvirt_network;
+
 void
-php_libvirt_network_dtor(virt_resource *rsrc TSRMLS_DC)
+php_libvirt_network_dtor(zend_resource *rsrc)
 {
     php_libvirt_network *network = (php_libvirt_network *)rsrc->ptr;
     int rv = 0;
 
     if (network != NULL) {
         if (network->network != NULL) {
-            if (!check_resource_allocation(network->conn->conn, INT_RESOURCE_NETWORK, network->network TSRMLS_CC)) {
+            if (!check_resource_allocation(network->conn->conn, INT_RESOURCE_NETWORK, network->network)) {
                 network->network = NULL;
                 efree(network);
                 return;
@@ -27,10 +31,10 @@ php_libvirt_network_dtor(virt_resource *rsrc TSRMLS_DC)
             rv = virNetworkFree(network->network);
             if (rv != 0) {
                 DPRINTF("%s: virNetworkFree(%p) returned %d (%s)\n", __FUNCTION__, network->network, rv, LIBVIRT_G(last_error));
-                php_error_docref(NULL TSRMLS_CC, E_WARNING, "virStorageVolFree failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
+                php_error_docref(NULL, E_WARNING, "virStorageVolFree failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
             } else {
                 DPRINTF("%s: virNetworkFree(%p) completed successfully\n", __FUNCTION__, network->network);
-                resource_change_counter(INT_RESOURCE_NETWORK, NULL, network->network, 0 TSRMLS_CC);
+                resource_change_counter(INT_RESOURCE_NETWORK, network->conn->conn, network->network, 0);
             }
             network->network = NULL;
         }
@@ -53,12 +57,12 @@ PHP_FUNCTION(libvirt_network_define_xml)
     virNetwork *net;
     zval *zconn;
     char *xml = NULL;
-    strsize_t xml_len;
+    size_t xml_len;
 
     GET_CONNECTION_FROM_ARGS("rs", &zconn, &xml, &xml_len);
 
     if ((net = virNetworkDefineXML(conn->conn, xml)) == NULL) {
-        set_error_if_unset("Cannot define a new network" TSRMLS_CC);
+        set_error_if_unset("Cannot define a new network");
         RETURN_FALSE;
     }
 
@@ -67,7 +71,7 @@ PHP_FUNCTION(libvirt_network_define_xml)
     res_net->conn = conn;
 
     DPRINTF("%s: returning %p\n", PHPFUNC, res_net->network);
-    resource_change_counter(INT_RESOURCE_NETWORK, conn->conn, res_net->network, 1 TSRMLS_CC);
+    resource_change_counter(INT_RESOURCE_NETWORK, conn->conn, res_net->network, 1);
 
     VIRT_REGISTER_RESOURCE(res_net, le_libvirt_network);
 }
@@ -87,7 +91,7 @@ PHP_FUNCTION(libvirt_network_get_xml_desc)
     char *xml = NULL;
     char *xpath = NULL;
     char *tmp;
-    strsize_t xpath_len;
+    size_t xpath_len;
     int retval = -1;
 
     GET_NETWORK_FROM_ARGS("r|s", &znetwork, &xpath, &xpath_len);
@@ -97,7 +101,7 @@ PHP_FUNCTION(libvirt_network_get_xml_desc)
     xml = virNetworkGetXMLDesc(network->network, 0);
 
     if (xml == NULL) {
-        set_error_if_unset("Cannot get network XML" TSRMLS_CC);
+        set_error_if_unset("Cannot get network XML");
         RETURN_FALSE;
     }
 
@@ -147,12 +151,12 @@ PHP_FUNCTION(libvirt_network_get)
     virNetwork *net;
     zval *zconn;
     char *name;
-    strsize_t name_len;
+    size_t name_len;
 
     GET_CONNECTION_FROM_ARGS("rs", &zconn, &name, &name_len);
 
     if ((net = virNetworkLookupByName(conn->conn, name)) == NULL) {
-        set_error_if_unset("Cannot get find requested network" TSRMLS_CC);
+        set_error_if_unset("Cannot get find requested network");
         RETURN_FALSE;
     }
 
@@ -161,7 +165,7 @@ PHP_FUNCTION(libvirt_network_get)
     res_net->conn = conn;
 
     DPRINTF("%s: returning %p\n", PHPFUNC, res_net->network);
-    resource_change_counter(INT_RESOURCE_NETWORK, conn->conn, res_net->network, 1 TSRMLS_CC);
+    resource_change_counter(INT_RESOURCE_NETWORK, conn->conn, res_net->network, 1);
 
     VIRT_REGISTER_RESOURCE(res_net, le_libvirt_network);
 }
@@ -184,7 +188,7 @@ PHP_FUNCTION(libvirt_network_get_bridge)
     name = virNetworkGetBridgeName(network->network);
 
     if (name == NULL) {
-        set_error_if_unset("Cannot get network bridge name" TSRMLS_CC);
+        set_error_if_unset("Cannot get network bridge name");
         RETURN_FALSE;
     }
 
@@ -210,7 +214,7 @@ PHP_FUNCTION(libvirt_network_get_active)
     res = virNetworkIsActive(network->network);
 
     if (res == -1) {
-        set_error_if_unset("Error getting virtual network state" TSRMLS_CC);
+        set_error_if_unset("Error getting virtual network state");
         RETURN_FALSE;
     }
 
@@ -236,7 +240,7 @@ PHP_FUNCTION(libvirt_network_set_active)
     GET_NETWORK_FROM_ARGS("rl", &znetwork, &act);
 
     if ((act != 0) && (act != 1)) {
-        set_error("Invalid network activity state" TSRMLS_CC);
+        set_error("Invalid network activity state");
         RETURN_FALSE;
     }
 
@@ -288,7 +292,7 @@ PHP_FUNCTION(libvirt_network_get_information)
     xml = virNetworkGetXMLDesc(network->network, 0);
 
     if (xml == NULL) {
-        set_error_if_unset("Cannot get network XML" TSRMLS_CC);
+        set_error_if_unset("Cannot get network XML");
         RETURN_FALSE;
     }
 
@@ -297,12 +301,12 @@ PHP_FUNCTION(libvirt_network_get_information)
     /* Get name */
     name = get_string_from_xpath(xml, "//network/name", NULL, &retval);
     if (name == NULL) {
-        set_error("Invalid XPath node for network name" TSRMLS_CC);
+        set_error("Invalid XPath node for network name");
         RETURN_FALSE;
     }
 
     if (retval < 0) {
-        set_error("Cannot get XPath expression result for network name" TSRMLS_CC);
+        set_error("Cannot get XPath expression result for network name");
         RETURN_FALSE;
     }
 
@@ -386,8 +390,8 @@ PHP_FUNCTION(libvirt_network_get_uuid_string)
 /*
  * Function name:   libvirt_network_get_uuid
  * Since version:   0.5.3
- * Descirption:     Function is used to get network's UUID in binary format
- * Arguments:       @res [resource]: libvirt netowrk resource
+ * Description:     Function is used to get network's UUID in binary format
+ * Arguments:       @res [resource]: libvirt network resource
  * Returns:         network UUID in binary format or FALSE on failure
  */
 PHP_FUNCTION(libvirt_network_get_uuid)
@@ -486,7 +490,7 @@ PHP_FUNCTION(libvirt_network_set_autostart)
  * Since version:   0.5.3
  * Description:     Function is used to list networks on the connection
  * Arguments:       @res [resource]: libvirt connection resource
- *                  @flags [int]: optional flags to filter the results for a smaller list of targetted networks (bitwise-OR VIR_CONNECT_LIST_NETWORKS_* constants)
+ *                  @flags [int]: optional flags to filter the results for a smaller list of targeted networks (bitwise-OR VIR_CONNECT_LIST_NETWORKS_* constants)
  * Returns:         libvirt network resources array for the connection
  */
 PHP_FUNCTION(libvirt_list_all_networks)
@@ -518,7 +522,7 @@ PHP_FUNCTION(libvirt_list_all_networks)
 
         VIRT_REGISTER_LIST_RESOURCE(network);
         resource_change_counter(INT_RESOURCE_NETWORK, conn->conn,
-                                res_network->network, 1 TSRMLS_CC);
+                                res_network->network, 1);
     }
 }
 
@@ -534,56 +538,102 @@ PHP_FUNCTION(libvirt_list_networks)
 {
     php_libvirt_connection *conn = NULL;
     zval *zconn;
-    zend_long flags = VIR_NETWORKS_ACTIVE | VIR_NETWORKS_INACTIVE;
-    int count = -1;
-    int expectedcount = -1;
-    char **names;
-    int i, done = 0;
+    int i;
+    virNetworkPtr *nets = NULL;
+    int nnets = 0;
+    zend_long flags = 0;
 
     GET_CONNECTION_FROM_ARGS("r|l", &zconn, &flags);
 
-    array_init(return_value);
-    if (flags & VIR_NETWORKS_ACTIVE) {
-        if ((expectedcount = virConnectNumOfNetworks(conn->conn)) < 0)
-            RETURN_FALSE;
-
-        names = (char **)emalloc(expectedcount*sizeof(char *));
-        count = virConnectListNetworks(conn->conn, names, expectedcount);
-        if ((count != expectedcount) || (count < 0)) {
-            efree(names);
-            RETURN_FALSE;
-        }
-
-        for (i = 0; i < count; i++) {
-            VIRT_ADD_NEXT_INDEX_STRING(return_value,  names[i]);
-            VIR_FREE(names[i]);
-        }
-
-        efree(names);
-        done++;
-    }
-
-    if (flags & VIR_NETWORKS_INACTIVE) {
-        if ((expectedcount = virConnectNumOfDefinedNetworks(conn->conn)) < 0)
-            RETURN_FALSE;
-        names = (char **)emalloc(expectedcount*sizeof(char *));
-        count = virConnectListDefinedNetworks(conn->conn, names, expectedcount);
-        if ((count != expectedcount) || (count < 0)) {
-            efree(names);
-            RETURN_FALSE;
-        }
-
-        for (i = 0; i < count; i++) {
-            VIRT_ADD_NEXT_INDEX_STRING(return_value, names[i]);
-            VIR_FREE(names[i]);
-        }
-
-        efree(names);
-        done++;
-    }
-
-    if (!done)
+    if ((nnets = virConnectListAllNetworks(conn->conn, &nets, flags)) < 0)
         RETURN_FALSE;
+
+    DPRINTF("%s: Found %d networks\n", PHPFUNC, nnets);
+
+    array_init(return_value);
+    for (i = 0; i < nnets; i++) {
+        virNetworkPtr net = nets[i];
+        const char *name;
+
+        if (!(name = virNetworkGetName(net)))
+            goto error;
+
+        VIRT_ADD_NEXT_INDEX_STRING(return_value, name);
+    }
+
+    for (i = 0; i < nnets; i++)
+        virNetworkFree(nets[i]);
+    free(nets);
+
+    return;
+
+ error:
+    for (i = 0; i < nnets; i++)
+        virNetworkFree(nets[i]);
+    free(nets);
+    RETURN_FALSE;
+}
+
+/*
+ * Function name:   libvirt_network_get_dhcp_leases
+ * Description:     Function is fetching leases info of guests in the specified network
+ * Arguments:       @res [resource]: libvirt network resource
+ *                  @mac [string]: Optional ASCII formatted MAC address of an interface
+ *                  @flags [int]: Extra flags, not used yet, so callers should always pass 0
+ * Returns:         dhcp leases info array on success, FALSE on error
+ */
+PHP_FUNCTION(libvirt_network_get_dhcp_leases)
+{
+    php_libvirt_network *network = NULL;
+    zval *znetwork;
+    char *mac = NULL;
+    size_t mac_len;
+    zend_long flags = 0;
+
+    virNetworkDHCPLeasePtr *leases = NULL;
+    int nleases = 0;
+
+    int i;
+
+    int done = 0;
+
+    GET_NETWORK_FROM_ARGS("r|sl", &znetwork, &mac, &mac_len, &flags);
+
+    if ((nleases = virNetworkGetDHCPLeases(network->network, mac, &leases, flags)) < 0) {
+        set_error_if_unset("Failed to get leases info");
+        goto cleanup;
+    }
+
+    array_init(return_value);
+
+    for (i = 0; i < nleases; i++) {
+        virNetworkDHCPLeasePtr lease;
+        lease = leases[i];
+        zval *arr;
+        VIRT_ARRAY_INIT(arr);
+        VIRT_ADD_ASSOC_STRING_WITH_NULL_POINTER_CHECK(arr, "iface", lease->iface);
+        add_assoc_long(arr, "expirytime", lease->expirytime);
+        add_assoc_long(arr, "type", lease->type);
+        VIRT_ADD_ASSOC_STRING_WITH_NULL_POINTER_CHECK(arr, "mac", lease->mac);
+        VIRT_ADD_ASSOC_STRING_WITH_NULL_POINTER_CHECK(arr, "iaid", lease->iaid);
+        VIRT_ADD_ASSOC_STRING_WITH_NULL_POINTER_CHECK(arr, "ipaddr", lease->ipaddr);
+        add_assoc_long(arr, "prefix", lease->prefix);
+        VIRT_ADD_ASSOC_STRING_WITH_NULL_POINTER_CHECK(arr, "hostname", lease->hostname);
+        VIRT_ADD_ASSOC_STRING_WITH_NULL_POINTER_CHECK(arr, "clientid", lease->clientid);
+        add_index_zval(return_value, i, arr);
+    }
+
+    done = 1;
+
+ cleanup:
+    if (leases) {
+        for (i = 0; i < nleases; i++)
+            virNetworkDHCPLeaseFree(leases[i]);
+        VIR_FREE(leases);
+    }
+    if (!done) {
+        RETURN_FALSE;
+    }
 }
 
 /*

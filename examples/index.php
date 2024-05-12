@@ -11,15 +11,17 @@
     $subaction = array_key_exists('subaction', $_GET) ? $_GET['subaction'] : false;
 
     if (($action == 'get-screenshot') && (array_key_exists('uuid', $_GET))) {
-        if (array_key_exists('width', $_GET) && $_GET['width'])
-            $tmp = $lv->domain_get_screenshot_thumbnail($_GET['uuid'], $_GET['width']);
-        else
-            $tmp = $lv->domain_get_screenshot($_GET['uuid'], 0);
+        $tmp = $lv->domain_get_screenshot($_GET['uuid']);
 
         if (!$tmp) {
             die($lv->get_last_error().'<br/>');
         } else {
             Header('Content-Type: ' . $tmp['mime']);
+            if (array_key_exists('download', $_GET)) {
+                Header("Content-Disposition: attachment; filename=\"" . $tmp['filename'] . "\"");
+            } else {
+                Header("Content-Disposition: inline");
+            }
             die($tmp['data']);
         }
     }
@@ -517,7 +519,11 @@
         $state = $lv->domain_state_translate($info['state']);
         $id = $lv->domain_get_id($dom);
         $arch = $lv->domain_get_arch($dom);
-        $vnc = $lv->domain_get_vnc_port($dom);
+        if ($lv->domain_is_active($dom)) {
+            $vnc = $lv->domain_get_vnc_port($dom);
+        } else {
+            $vnc = -1;
+        }
 
 		if (!$id)
 			$id = 'N/A';
@@ -620,8 +626,8 @@
             echo 'Domain doesn\'t have any network devices';
         }
 
-        if ( $dom['state'] == 1 ) {
-            echo "<h3>Screenshot</h3><img src=\"?action=get-screenshot&uuid={$_GET['uuid']}&width=640\">";
+        if ($lv->domain_is_active($dom)) {
+            echo "<h3>Screenshot</h3><img src=\"?action=get-screenshot&uuid={$_GET['uuid']}\" id=\"screenshot\" width=\"640\">";
         }
     } else if ($action == 'nwfilters') {
         echo "<h2>Network filters</h2>";
@@ -715,7 +721,11 @@
             $state = $lv->domain_state_translate($info['state']);
             $id = $lv->domain_get_id($dom);
             $arch = $lv->domain_get_arch($dom);
-            $vnc = $lv->domain_get_vnc_port($dom);
+            if ($active) {
+                $vnc = $lv->domain_get_vnc_port($dom);
+            } else {
+                $vnc = -1;
+            }
             $nics = $lv->get_network_cards($dom);
             if (($diskcnt = $lv->get_disk_count($dom)) > 0) {
                 $disks = $diskcnt.' / '.$lv->get_disk_capacity($dom);
@@ -748,7 +758,7 @@
                  "<td align=\"center\">$spaces$id / $vnc$spaces</td>";
 
             if ($lv->supports('screenshot') && $active)
-                echo "<td align=\"center\"><img src=\"?action=get-screenshot&uuid=$uuid&width=120\" id=\"screenshot$id\"></td>";
+                echo "<td align=\"center\"><img src=\"?action=get-screenshot&uuid=$uuid\" id=\"screenshot$id\" width=\"120\"></td>";
             else
                 echo "<td>$spaces</td>";
 
@@ -764,7 +774,7 @@
             if (!$lv->domain_is_running($name))
                 echo "| <a href=\"?action=domain-edit&amp;uuid=$uuid\">Edit domain XML</a>";
             else if ($active > 0)
-                echo "| <a href=\"?action=get-screenshot&amp;uuid=$uuid\">Get screenshot</a>";
+                echo "| <a href=\"?action=get-screenshot&amp;uuid=${uuid}&amp;download=1\">Get screenshot</a>";
 
             echo "$spaces" .
                   "</td>" .

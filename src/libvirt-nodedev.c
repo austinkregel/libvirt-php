@@ -4,6 +4,8 @@
  * See COPYING for the license of this software
  */
 
+#include <config.h>
+
 #include <libvirt/libvirt.h>
 
 #include "libvirt-php.h"
@@ -11,15 +13,17 @@
 
 DEBUG_INIT("nodedev");
 
+int le_libvirt_nodedev;
+
 void
-php_libvirt_nodedev_dtor(virt_resource *rsrc TSRMLS_DC)
+php_libvirt_nodedev_dtor(zend_resource *rsrc)
 {
     php_libvirt_nodedev *nodedev = (php_libvirt_nodedev *)rsrc->ptr;
     int rv = 0;
 
     if (nodedev != NULL) {
         if (nodedev->device != NULL) {
-            if (!check_resource_allocation(nodedev->conn->conn, INT_RESOURCE_NODEDEV, nodedev->device TSRMLS_CC)) {
+            if (!check_resource_allocation(nodedev->conn->conn, INT_RESOURCE_NODEDEV, nodedev->device)) {
                 nodedev->device = NULL;
                 efree(nodedev);
                 return;
@@ -27,10 +31,10 @@ php_libvirt_nodedev_dtor(virt_resource *rsrc TSRMLS_DC)
             rv = virNodeDeviceFree(nodedev->device);
             if (rv != 0) {
                 DPRINTF("%s: virNodeDeviceFree(%p) returned %d (%s)\n", __FUNCTION__, nodedev->device, rv, LIBVIRT_G(last_error));
-                php_error_docref(NULL TSRMLS_CC, E_WARNING, "virStorageVolFree failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
+                php_error_docref(NULL, E_WARNING, "virStorageVolFree failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
             } else {
                 DPRINTF("%s: virNodeDeviceFree(%p) completed successfully\n", __FUNCTION__, nodedev->device);
-                resource_change_counter(INT_RESOURCE_NODEDEV, nodedev->conn->conn, nodedev->device, 0 TSRMLS_CC);
+                resource_change_counter(INT_RESOURCE_NODEDEV, nodedev->conn->conn, nodedev->device, 0);
             }
             nodedev->device = NULL;
         }
@@ -53,12 +57,12 @@ PHP_FUNCTION(libvirt_nodedev_get)
     virNodeDevice *dev;
     zval *zconn;
     char *name;
-    strsize_t name_len;
+    size_t name_len;
 
     GET_CONNECTION_FROM_ARGS("rs", &zconn, &name, &name_len);
 
     if ((dev = virNodeDeviceLookupByName(conn->conn, name)) == NULL) {
-        set_error("Cannot get find requested node device" TSRMLS_CC);
+        set_error("Cannot get find requested node device");
         RETURN_FALSE;
     }
 
@@ -67,7 +71,7 @@ PHP_FUNCTION(libvirt_nodedev_get)
     res_dev->conn = conn;
 
     DPRINTF("%s: returning %p\n", PHPFUNC, res_dev->device);
-    resource_change_counter(INT_RESOURCE_NODEDEV, conn->conn, res_dev->device, 1 TSRMLS_CC);
+    resource_change_counter(INT_RESOURCE_NODEDEV, conn->conn, res_dev->device, 1);
 
     VIRT_REGISTER_RESOURCE(res_dev, le_libvirt_nodedev);
 }
@@ -121,7 +125,7 @@ PHP_FUNCTION(libvirt_nodedev_get_xml_desc)
     char *tmp = NULL;
     char *xml = NULL;
     char *xpath = NULL;
-    strsize_t xpath_len;
+    size_t xpath_len;
     int retval = -1;
 
     GET_NODEDEV_FROM_ARGS("r|s", &znodedev, &xpath, &xpath_len);
@@ -130,7 +134,7 @@ PHP_FUNCTION(libvirt_nodedev_get_xml_desc)
 
     xml = virNodeDeviceGetXMLDesc(nodedev->device, 0);
     if (!xml) {
-        set_error("Cannot get the device XML information" TSRMLS_CC);
+        set_error("Cannot get the device XML information");
         RETURN_FALSE;
     }
 
@@ -164,7 +168,7 @@ PHP_FUNCTION(libvirt_nodedev_get_information)
 
     xml = virNodeDeviceGetXMLDesc(nodedev->device, 0);
     if (!xml) {
-        set_error("Cannot get the device XML information" TSRMLS_CC);
+        set_error("Cannot get the device XML information");
         RETURN_FALSE;
     }
 
@@ -173,12 +177,12 @@ PHP_FUNCTION(libvirt_nodedev_get_information)
     /* Get name */
     tmp = get_string_from_xpath(xml, "//device/name", NULL, &retval);
     if (tmp == NULL) {
-        set_error("Invalid XPath node for device name" TSRMLS_CC);
+        set_error("Invalid XPath node for device name");
         goto error;
     }
 
     if (retval < 0) {
-        set_error("Cannot get XPath expression result for device name" TSRMLS_CC);
+        set_error("Cannot get XPath expression result for device name");
         goto error;
     }
 
@@ -317,7 +321,7 @@ PHP_FUNCTION(libvirt_list_nodedevs)
     char *cap = NULL;
     char **names;
     int i;
-    strsize_t cap_len;
+    size_t cap_len;
 
     GET_CONNECTION_FROM_ARGS("r|s", &zconn, &cap, &cap_len);
 

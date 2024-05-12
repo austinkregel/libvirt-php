@@ -4,6 +4,8 @@
  * See COPYING for the license of this software
  */
 
+#include <config.h>
+
 #include <libvirt/libvirt.h>
 
 #include "libvirt-php.h"
@@ -11,15 +13,17 @@
 
 DEBUG_INIT("nwfilter");
 
+int le_libvirt_nwfilter;
+
 void
-php_libvirt_nwfilter_dtor(virt_resource *rsrc TSRMLS_DC)
+php_libvirt_nwfilter_dtor(zend_resource *rsrc)
 {
     php_libvirt_nwfilter *nwfilter = (php_libvirt_nwfilter *) rsrc->ptr;
     int rv = 0;
 
     if (nwfilter != NULL) {
         if (nwfilter->nwfilter != NULL) {
-            if (!check_resource_allocation(NULL, INT_RESOURCE_NWFILTER, nwfilter->nwfilter TSRMLS_CC)) {
+            if (!check_resource_allocation(NULL, INT_RESOURCE_NWFILTER, nwfilter->nwfilter)) {
                 nwfilter->nwfilter = NULL;
                 efree(nwfilter);
 
@@ -28,10 +32,10 @@ php_libvirt_nwfilter_dtor(virt_resource *rsrc TSRMLS_DC)
             rv = virNWFilterFree(nwfilter->nwfilter);
             if (rv != 0) {
                 DPRINTF("%s: virNWFilterFree(%p) returned %d\n", __FUNCTION__, nwfilter->nwfilter, rv);
-                php_error_docref(NULL TSRMLS_CC, E_WARNING, "virNWFilterFree failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
+                php_error_docref(NULL, E_WARNING, "virNWFilterFree failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
             } else {
                 DPRINTF("%s: virNWFilterFree(%p) completed successfully\n", __FUNCTION__, nwfilter->nwfilter);
-                resource_change_counter(INT_RESOURCE_NWFILTER, nwfilter->conn->conn, nwfilter->nwfilter, 0 TSRMLS_CC);
+                resource_change_counter(INT_RESOURCE_NWFILTER, nwfilter->conn->conn, nwfilter->nwfilter, 0);
             }
             nwfilter->nwfilter = NULL;
         }
@@ -54,12 +58,12 @@ PHP_FUNCTION(libvirt_nwfilter_define_xml)
     virNWFilter *nwfilter;
     zval *zconn;
     char *xml = NULL;
-    strsize_t xml_len;
+    size_t xml_len;
 
     GET_CONNECTION_FROM_ARGS("rs", &zconn, &xml, &xml_len);
 
     if ((nwfilter = virNWFilterDefineXML(conn->conn, xml)) == NULL) {
-        set_error_if_unset("Cannot define a new NWFilter" TSRMLS_CC);
+        set_error_if_unset("Cannot define a new NWFilter");
         RETURN_FALSE;
     }
 
@@ -68,7 +72,7 @@ PHP_FUNCTION(libvirt_nwfilter_define_xml)
     res_nwfilter->conn = conn;
 
     resource_change_counter(INT_RESOURCE_NWFILTER, conn->conn,
-                            res_nwfilter->nwfilter, 1 TSRMLS_CC);
+                            res_nwfilter->nwfilter, 1);
 
     VIRT_REGISTER_RESOURCE(res_nwfilter, le_libvirt_nwfilter);
 }
@@ -108,7 +112,7 @@ PHP_FUNCTION(libvirt_nwfilter_get_xml_desc)
     char *xml = NULL;
     char *xpath = NULL;
     char *tmp;
-    strsize_t xpath_len;
+    size_t xpath_len = 0;
     int retval = -1;
 
     GET_NWFILTER_FROM_ARGS("r|s", &znwfilter, &xpath, &xpath_len);
@@ -119,7 +123,7 @@ PHP_FUNCTION(libvirt_nwfilter_get_xml_desc)
     xml = virNWFilterGetXMLDesc(nwfilter->nwfilter, 0);
 
     if (xml == NULL) {
-        set_error_if_unset("Cannot get nwfilter XML" TSRMLS_CC);
+        set_error_if_unset("Cannot get nwfilter XML");
         RETURN_FALSE;
     }
 
@@ -164,8 +168,8 @@ PHP_FUNCTION(libvirt_nwfilter_get_uuid_string)
 /*
  * Function name:   libvirt_nwfilter_get_uuid
  * Since version:   0.5.3
- * Descirption:     Function is used to get nwfilter's UUID in binary format
- * Arguments:       @res [resource]: libvirt netowrk resource
+ * Description:     Function is used to get nwfilter's UUID in binary format
+ * Arguments:       @res [resource]: libvirt network resource
  * Returns:         nwfilter UUID in binary format or FALSE on failure
  */
 PHP_FUNCTION(libvirt_nwfilter_get_uuid)
@@ -230,7 +234,7 @@ PHP_FUNCTION(libvirt_nwfilter_lookup_by_name)
     php_libvirt_connection *conn = NULL;
     virNWFilterPtr nwfilter = NULL;
     zval *zconn;
-    strsize_t name_len;
+    size_t name_len;
     char *name = NULL;
 
     GET_CONNECTION_FROM_ARGS("rs", &zconn, &name, &name_len);
@@ -248,7 +252,7 @@ PHP_FUNCTION(libvirt_nwfilter_lookup_by_name)
     res_nwfilter->nwfilter = nwfilter;
 
     resource_change_counter(INT_RESOURCE_NWFILTER, conn->conn,
-                            res_nwfilter->nwfilter, 1 TSRMLS_CC);
+                            res_nwfilter->nwfilter, 1);
 
     VIRT_REGISTER_RESOURCE(res_nwfilter, le_libvirt_nwfilter);
 }
@@ -268,7 +272,7 @@ PHP_FUNCTION(libvirt_nwfilter_lookup_by_uuid_string)
     virNWFilterPtr nwfilter = NULL;
     zval *zconn;
     char *uuid = NULL;
-    strsize_t uuid_len;
+    size_t uuid_len;
 
     GET_CONNECTION_FROM_ARGS("rs", &zconn, &uuid, &uuid_len);
 
@@ -285,7 +289,7 @@ PHP_FUNCTION(libvirt_nwfilter_lookup_by_uuid_string)
     res_nwfilter->nwfilter = nwfilter;
 
     resource_change_counter(INT_RESOURCE_NWFILTER, conn->conn,
-                            res_nwfilter->nwfilter, 1 TSRMLS_CC);
+                            res_nwfilter->nwfilter, 1);
 
     VIRT_REGISTER_RESOURCE(res_nwfilter, le_libvirt_nwfilter);
 }
@@ -304,8 +308,8 @@ PHP_FUNCTION(libvirt_nwfilter_lookup_by_uuid)
     php_libvirt_connection *conn = NULL;
     virNWFilterPtr nwfilter = NULL;
     zval *zconn;
-    strsize_t uuid_len;
-    unsigned char *uuid = NULL;
+    size_t uuid_len;
+    char *uuid = NULL;
 
     GET_CONNECTION_FROM_ARGS("rs", &zconn, &uuid, &uuid_len);
 
@@ -322,7 +326,7 @@ PHP_FUNCTION(libvirt_nwfilter_lookup_by_uuid)
     res_nwfilter->nwfilter = nwfilter;
 
     resource_change_counter(INT_RESOURCE_NWFILTER, conn->conn,
-                            res_nwfilter->nwfilter, 1 TSRMLS_CC);
+                            res_nwfilter->nwfilter, 1);
 
     VIRT_REGISTER_RESOURCE(res_nwfilter, le_libvirt_nwfilter);
 }
@@ -361,7 +365,7 @@ PHP_FUNCTION(libvirt_list_all_nwfilters)
         res_nwfilter->conn = conn;
 
         resource_change_counter(INT_RESOURCE_NWFILTER, conn->conn,
-                                res_nwfilter->nwfilter, 1 TSRMLS_CC);
+                                res_nwfilter->nwfilter, 1);
         VIRT_REGISTER_LIST_RESOURCE(nwfilter);
     }
     VIR_FREE(filters);
@@ -378,37 +382,38 @@ PHP_FUNCTION(libvirt_list_nwfilters)
 {
     php_libvirt_connection *conn = NULL;
     zval *zconn;
-    int count = -1;
-    int expectedcount = -1;
-    char **names;
-    int i, done = 0;
+    int i;
+    virNWFilterPtr *nwfilters = NULL;
+    int nnwfilters = 0;
+    const unsigned int flags = 0;
 
     GET_CONNECTION_FROM_ARGS("r", &zconn);
 
+    if ((nnwfilters = virConnectListAllNWFilters(conn->conn, &nwfilters, flags)) < 0)
+        RETURN_FALSE;
+
+    DPRINTF("%s: Found %d nwfilters\n", PHPFUNC, nnwfilters);
+
     array_init(return_value);
+    for (i = 0; i < nnwfilters; i++) {
+        virNWFilterPtr nwfilter = nwfilters[i];
+        const char *name;
 
-    if ((expectedcount = virConnectNumOfNWFilters(conn->conn)) < 0)
-        RETURN_FALSE;
+        if (!(name = virNWFilterGetName(nwfilter)))
+            goto error;
 
-    names = (char **) emalloc(expectedcount * sizeof(char *));
-    count = virConnectListNWFilters(conn->conn, names, expectedcount);
-
-    if (count != expectedcount || count < 0) {
-        efree(names);
-        DPRINTF("%s: virConnectListNWFilters returned %d filters, while %d was "
-                "expected\n", PHPFUNC, count, expectedcount);
-        RETURN_FALSE;
+        VIRT_ADD_NEXT_INDEX_STRING(return_value, name);
     }
 
-    for (i = 0; i < count; i++) {
-        VIRT_ADD_NEXT_INDEX_STRING(return_value,  names[i]);
-        VIR_FREE(names[i]);
-    }
+    for (i = 0; i < nnwfilters; i++)
+        virNWFilterFree(nwfilters[i]);
+    free(nwfilters);
 
-    efree(names);
-    done++;
+    return;
 
-
-    if (!done)
-        RETURN_FALSE;
+ error:
+    for (i = 0; i < nnwfilters; i++)
+        virNWFilterFree(nwfilters[i]);
+    free(nwfilters);
+    RETURN_FALSE;
 }

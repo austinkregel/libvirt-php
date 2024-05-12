@@ -4,12 +4,17 @@
  * See COPYING for the license of this software
  */
 
+#include <config.h>
+
 #include <libvirt/libvirt.h>
 
 #include "libvirt-php.h"
 #include "libvirt-connection.h"
+#include <stdbool.h>
 
 DEBUG_INIT("connection");
+
+int le_libvirt_connection;
 
 /*
  * Private function name:   free_resources_on_connection
@@ -19,7 +24,7 @@ DEBUG_INIT("connection");
  * Returns:                 None
  */
 static void
-free_resources_on_connection(virConnectPtr conn TSRMLS_DC)
+free_resources_on_connection(virConnectPtr conn)
 {
     int binding_resources_count = 0;
     resource_info *binding_resources;
@@ -30,28 +35,28 @@ free_resources_on_connection(virConnectPtr conn TSRMLS_DC)
 
     for (i = 0; i < binding_resources_count; i++) {
         if ((binding_resources[i].overwrite == 0) && (binding_resources[i].conn == conn))
-            free_resource(binding_resources[i].type, binding_resources[i].mem TSRMLS_CC);
+            free_resource(binding_resources[i].type, binding_resources[i].mem);
     }
 }
 
 /* Destructor for connection resource */
 void
-php_libvirt_connection_dtor(virt_resource *rsrc TSRMLS_DC)
+php_libvirt_connection_dtor(zend_resource *rsrc)
 {
     php_libvirt_connection *conn = (php_libvirt_connection *) rsrc->ptr;
     int rv = 0;
 
     if (conn != NULL) {
         if (conn->conn != NULL) {
-            free_resources_on_connection(conn->conn TSRMLS_CC);
+            free_resources_on_connection(conn->conn);
 
             rv = virConnectClose(conn->conn);
             if (rv == -1) {
                 DPRINTF("%s: virConnectClose(%p) returned %d (%s)\n", __FUNCTION__, conn->conn, rv, LIBVIRT_G(last_error));
-                php_error_docref(NULL TSRMLS_CC, E_WARNING, "virConnectClose failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
+                php_error_docref(NULL, E_WARNING, "virConnectClose failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
             } else {
                 DPRINTF("%s: virConnectClose(%p) completed successfully\n", __FUNCTION__, conn->conn);
-                resource_change_counter(INT_RESOURCE_CONNECTION, NULL, conn->conn, 0 TSRMLS_CC);
+                resource_change_counter(INT_RESOURCE_CONNECTION, conn->conn, conn->conn, 0);
             }
             conn->conn = NULL;
         }
@@ -67,8 +72,6 @@ php_libvirt_connection_dtor(virt_resource *rsrc TSRMLS_DC)
 static int libvirt_virConnectAuthCallback(virConnectCredentialPtr cred,
                                           unsigned int ncred, void *cbdata)
 {
-    TSRMLS_FETCH();
-
     unsigned int i, j;
     php_libvirt_cred_value *creds = (php_libvirt_cred_value *) cbdata;
     for (i = 0; i < (unsigned int)ncred; i++) {
@@ -101,7 +104,7 @@ static int libvirt_virConnectCredType[] = {
  * Function name:   libvirt_connect
  * Since version:   0.4.1(-1)
  * Description:     libvirt_connect() is used to connect to the specified libvirt daemon using the specified URL, user can also set the readonly flag and/or set credentials for connection
- * Arguments:       @url [string]: URI for connection
+ * Arguments:       @url [string]: URI for connection, can be NULL
  *                  @readonly [bool]: flag whether to use read-only connection or not
  *                  @credentials [array]: array of connection credentials
  * Returns:         libvirt connection resource
@@ -124,8 +127,8 @@ PHP_FUNCTION(libvirt_connect)
     };
 
     char *url = NULL;
-    strsize_t url_len = 0;
-    zend_bool readonly = 1;
+    size_t url_len = 0;
+    bool readonly = 1;
 
     HashTable *arr_hash;
     HashPosition pointer;
@@ -133,7 +136,7 @@ PHP_FUNCTION(libvirt_connect)
 
     unsigned long libVer;
 
-    if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|sba", &url, &url_len, &readonly, &zcreds) == FAILURE) {
+    if (zend_parse_parameters(ZEND_NUM_ARGS(), "|s!ba", &url, &url_len, &readonly, &zcreds) == FAILURE) {
         RETURN_FALSE;
     }
 
@@ -141,18 +144,18 @@ PHP_FUNCTION(libvirt_connect)
         RETURN_FALSE;
 
     if (libVer < 6002) {
-        set_error("Only libvirt 0.6.2 and higher supported. Please upgrade your libvirt" TSRMLS_CC);
+        set_error("Only libvirt 0.6.2 and higher supported. Please upgrade your libvirt");
         RETURN_FALSE;
     }
 
-    if ((count_resources(INT_RESOURCE_CONNECTION TSRMLS_CC) + 1) > LIBVIRT_G(max_connections_ini)) {
+    if ((count_resources(INT_RESOURCE_CONNECTION) + 1) > LIBVIRT_G(max_connections_ini)) {
         DPRINTF("%s: maximum number of connections allowed exceeded (max %lu)\n", PHPFUNC, (unsigned long)LIBVIRT_G(max_connections_ini));
-        set_error("Maximum number of connections allowed exceeded" TSRMLS_CC);
+        set_error("Maximum number of connections allowed exceeded");
         RETURN_FALSE;
     }
 
     /* If 'null' value has been passed as URL override url to NULL value to autodetect the hypervisor */
-    if ((url == NULL) || (strcasecmp(url, "NULL") == 0))
+    if (url && strcasecmp(url, "NULL") == 0)
         url = NULL;
 
     conn = (php_libvirt_connection *)emalloc(sizeof(php_libvirt_connection));
@@ -188,7 +191,7 @@ PHP_FUNCTION(libvirt_connect)
                     j++;
                 }
             }
-        } VIRT_FOREACH_END();
+        }
         DPRINTF("%s: Found %d elements for credentials\n", PHPFUNC, j);
         creds[0].count = j;
         libvirt_virConnectAuth.cbdata = (void *)creds;
@@ -204,7 +207,7 @@ PHP_FUNCTION(libvirt_connect)
         RETURN_FALSE;
     }
 
-    resource_change_counter(INT_RESOURCE_CONNECTION, NULL, conn->conn, 1 TSRMLS_CC);
+    resource_change_counter(INT_RESOURCE_CONNECTION, conn->conn, conn->conn, 1);
     DPRINTF("%s: Connection to %s established, returning %p\n", PHPFUNC, url, conn->conn);
 
     VIRT_REGISTER_RESOURCE(conn, le_libvirt_connection);
@@ -290,7 +293,7 @@ PHP_FUNCTION(libvirt_connect_get_hypervisor)
     add_assoc_long(return_value, "minor", (long)((hvVer/1000) % 1000));
     add_assoc_long(return_value, "release", (long)(hvVer % 1000));
 
-    snprintf(hvStr, sizeof(hvStr), "%s %d.%d.%d", type,
+    snprintf(hvStr, sizeof(hvStr), "%s %ld.%ld.%ld", type,
              (long)((hvVer/1000000) % 1000), (long)((hvVer/1000) % 1000), (long)(hvVer % 1000));
     VIRT_ADD_ASSOC_STRING(return_value, "hypervisor_string", hvStr);
 }
@@ -309,13 +312,67 @@ PHP_FUNCTION(libvirt_connect_get_capabilities)
     zval *zconn;
     char *caps;
     char *xpath = NULL;
-    strsize_t xpath_len;
+    size_t xpath_len;
     char *tmp = NULL;
     int retval = -1;
 
     GET_CONNECTION_FROM_ARGS("r|s", &zconn, &xpath, &xpath_len);
 
     caps = virConnectGetCapabilities(conn->conn);
+    if (caps == NULL)
+        RETURN_FALSE;
+
+    tmp = get_string_from_xpath(caps, xpath, NULL, &retval);
+    if ((tmp == NULL) || (retval < 0)) {
+        VIRT_RETVAL_STRING(caps);
+    } else {
+        VIRT_RETVAL_STRING(tmp);
+    }
+
+    VIR_FREE(caps);
+    VIR_FREE(tmp);
+}
+
+/*
+ * Function name:   libvirt_connect_get_domain_capabilities
+ * Since version:   0.5.8
+ * Description:     Function is used to get the domain capabilities information
+ *                  from the connection
+ * Arguments:       @conn [resource]: resource for connection
+ *                  @emulatorbin [string]: optional path to emulator
+ *                  @arch [string]: optional domain architecture
+ *                  @machine [string]: optional machine type
+ *                  @virttype [string]: optional virtualization type
+ *                  @flags [int] : extra flags; not used yet, so callers should always pass 0
+ *                  @xpath [string]: optional xPath query to be applied on the result
+ * Returns:         domain capabilities XML from the connection or FALSE for error
+ */
+PHP_FUNCTION(libvirt_connect_get_domain_capabilities)
+{
+    php_libvirt_connection *conn = NULL;
+    zval *zconn;
+    char *caps;
+    char *emulatorbin = NULL;
+    size_t emulatorbin_len = 0;
+    char *arch = NULL;
+    size_t arch_len = 0;
+    char *machine = NULL;
+    size_t machine_len = 0;
+    char *virttype = NULL;
+    size_t virttype_len = 0;
+    zend_long flags = 0;
+    char *xpath = NULL;
+    size_t xpath_len = 0;
+    char *tmp = NULL;
+    int retval = -1;
+
+    GET_CONNECTION_FROM_ARGS("r|s!s!s!s!ls!", &zconn, &emulatorbin,
+                             &emulatorbin_len, &arch, &arch_len, &machine,
+                             &machine_len, &virttype, &virttype_len, &flags,
+                             &xpath, &xpath_len);
+
+    caps = virConnectGetDomainCapabilities(conn->conn, emulatorbin,
+                                           arch, machine, virttype, flags);
     if (caps == NULL)
         RETURN_FALSE;
 
@@ -343,17 +400,14 @@ PHP_FUNCTION(libvirt_connect_get_emulator)
     php_libvirt_connection *conn = NULL;
     zval *zconn;
     char *arch = NULL;
-    strsize_t arch_len;
+    size_t arch_len;
     char *tmp;
 
-    GET_CONNECTION_FROM_ARGS("r|s", &zconn, &arch, &arch_len);
+    GET_CONNECTION_FROM_ARGS("r|s!", &zconn, &arch, &arch_len);
 
-    if ((arch == NULL) || (arch_len == 0))
-        arch = NULL;
-
-    tmp = connection_get_emulator(conn->conn, arch TSRMLS_CC);
+    tmp = connection_get_emulator(conn->conn, arch);
     if (tmp == NULL) {
-        set_error("Cannot get emulator" TSRMLS_CC);
+        set_error("Cannot get emulator");
         RETURN_FALSE;
     }
 
@@ -374,61 +428,53 @@ PHP_FUNCTION(libvirt_connect_get_nic_models)
     php_libvirt_connection *conn = NULL;
     zval *zconn;
     char *arch = NULL;
-    strsize_t arch_len;
-    char *tmp;
+    size_t arch_len;
+    char cmd[1024] = { 0 };
+    char *reply = NULL;
+    char *tmp = NULL;
 
-    GET_CONNECTION_FROM_ARGS("r|s", &zconn, &arch, &arch_len);
+    GET_CONNECTION_FROM_ARGS("r|s!", &zconn, &arch, &arch_len);
 
     /* Disable getting it on remote connections */
     if (!is_local_connection(conn->conn)) {
-        set_error("This function works only on local connections" TSRMLS_CC);
+        set_error("This function works only on local connections");
         RETURN_FALSE;
     }
 
     /* This approach is working only for QEMU driver so bails if not currently using it */
     if (strcmp(virConnectGetType(conn->conn), "QEMU") != 0) {
-        set_error("This function can be used only for QEMU driver" TSRMLS_CC);
+        set_error("This function can be used only for QEMU driver");
         RETURN_FALSE;
     }
 
 #ifndef EXTWIN
-    if ((arch == NULL) || (arch_len == 0))
-        arch = NULL;
-
-    tmp = connection_get_emulator(conn->conn, arch TSRMLS_CC);
+    tmp = connection_get_emulator(conn->conn, arch);
     if (tmp == NULL) {
-        set_error("Cannot get emulator" TSRMLS_CC);
+        set_error("Cannot get emulator");
         RETURN_FALSE;
     }
 
-    char cmd[4096] = { 0 };
-    char tmp2[16]  = { 0 };
-    snprintf(cmd, sizeof(cmd), "%s -net nic,model=? 2>&1", tmp);
+    snprintf(cmd, sizeof(cmd), "%s -net nic,model=?", tmp);
     VIR_FREE(tmp);
 
-    FILE *fp = popen(cmd, "r");
-    if (fp == NULL)
+    if (runCommand(cmd, &reply) < 0)
         RETURN_FALSE;
 
+# define NEEDLE "Supported NIC models:\n"
     array_init(return_value);
-    while (!feof(fp)) {
-        memset(cmd, 0, sizeof(cmd));
-        if (!fgets(cmd, sizeof(cmd), fp))
-            break;
+    if ((tmp = strstr(reply, NEEDLE))) {
+        size_t i;
+        char num[16] = { 0 };
+        tTokenizer t = tokenize(tmp + strlen(NEEDLE), "\n");
 
-        if ((tmp = strstr(cmd, "Supported NIC models:")) != NULL) {
-            tmp = strstr(tmp, ":") + 2;
-
-            int i;
-            tTokenizer t = tokenize(tmp, ",");
-            for (i = 0; i < t.numTokens; i++) {
-                snprintf(tmp2, sizeof(tmp2), "%d", i);
-                VIRT_ADD_ASSOC_STRING(return_value, tmp2, t.tokens[i]);
-            }
-            free_tokens(t);
+        for (i = 0; i < t.numTokens; i++) {
+            snprintf(num, sizeof(num), "%zu", i);
+            VIRT_ADD_ASSOC_STRING(return_value, num, t.tokens[i]);
         }
+        free_tokens(t);
     }
-    fclose(fp);
+    VIR_FREE(reply);
+# undef NEEDLE
 #endif
 }
 
@@ -446,109 +492,116 @@ PHP_FUNCTION(libvirt_connect_get_soundhw_models)
     php_libvirt_connection *conn = NULL;
     zval *zconn;
     char *arch = NULL;
-    strsize_t arch_len;
-    char *tmp;
+    size_t arch_len;
     zend_long flags = 0;
+    char cmd[1024] = { 0 };
+    char *reply = NULL;
+    char *tmp = NULL;
 
-    GET_CONNECTION_FROM_ARGS("r|sl", &zconn, &arch, &arch_len, &flags);
-
-    if ((arch == NULL) || (arch_len == 0))
-        arch = NULL;
+    GET_CONNECTION_FROM_ARGS("r|s!l", &zconn, &arch, &arch_len, &flags);
 
     /* Disable getting it on remote connections */
     if (!is_local_connection(conn->conn)) {
-        set_error("This function works only on local connections" TSRMLS_CC);
+        set_error("This function works only on local connections");
         RETURN_FALSE;
     }
 
 #ifndef EXTWIN
     /* This approach is working only for QEMU driver so bails if not currently using it */
     if (strcmp(virConnectGetType(conn->conn), "QEMU") != 0) {
-        set_error("This function can be used only for QEMU driver" TSRMLS_CC);
+        set_error("This function can be used only for QEMU driver");
         RETURN_FALSE;
     }
 
-    tmp = connection_get_emulator(conn->conn, arch TSRMLS_CC);
+    tmp = connection_get_emulator(conn->conn, arch);
     if (tmp == NULL) {
-        set_error("Cannot get emulator" TSRMLS_CC);
+        set_error("Cannot get emulator");
         RETURN_FALSE;
     }
 
-    char cmd[4096] = { 0 };
-    snprintf(cmd, sizeof(cmd), "%s -soundhw help 2>&1", tmp);
+    snprintf(cmd, sizeof(cmd), "%s -device ?", tmp);
     VIR_FREE(tmp);
 
-    FILE *fp = popen(cmd, "r");
-    if (fp == NULL)
+    if (runCommand(cmd, &reply) < 0)
         RETURN_FALSE;
 
-    short inFunc = 0;
+# define NEEDLE "Sound devices:\n"
+    if ((tmp = strstr(reply, NEEDLE))) {
+        char *nextSec = strstr(tmp, "\n\n");
+        tTokenizer t;
+        size_t i;
 
-    int n = 0;
-    array_init(return_value);
-    while (!feof(fp)) {
-        memset(cmd, 0, sizeof(cmd));
-        if (!fgets(cmd, sizeof(cmd), fp))
-            break;
+        if (nextSec) {
+            /* Terminate next section */
+            *nextSec = '\0';
+        }
 
-        if (strncmp(cmd, "Valid ", 6) == 0) {
-            inFunc = 1;
-            continue;
-        } else
-            if (strlen(cmd) < 2)
-                inFunc = 0;
+        t = tokenize(tmp + strlen(NEEDLE), "\n");
+        array_init(return_value);
+        for (i = 0; i < t.numTokens; i++) {
+            tTokenizer subT;
+            const char *line = t.tokens[i];
 
-        if (inFunc) {
-            int i = 0;
-            char desc[1024] = { 0 };
-            tTokenizer t = tokenize(cmd, " ");
-            if (t.numTokens == 0)
+            if (strncmp(line, "name ", 5) != 0)
                 continue;
 
-            if ((i > 0) && (flags & CONNECT_FLAG_SOUNDHW_GET_NAMES)) {
-                zval *arr;
-                memset(desc, 0, sizeof(desc));
-                for (i = 1; i < t.numTokens; i++) {
-                    strcat(desc, t.tokens[i]);
-                    if (i < t.numTokens - 1)
-                        strcat(desc, " ");
-                }
-
-                VIRT_ARRAY_INIT(arr);
-                VIRT_ADD_ASSOC_STRING(arr, "name", t.tokens[0]);
-                VIRT_ADD_ASSOC_STRING(arr, "description", desc);
-                add_next_index_zval(return_value, arr);
-            } else {
-                char tmp2[16] = { 0 };
-                snprintf(tmp2, sizeof(tmp2), "%d", n++);
-                VIRT_ADD_ASSOC_STRING(return_value, tmp2, t.tokens[0]);
+            subT = tokenize(line, "\"");
+            if (subT.numTokens < 2) {
+                free_tokens(subT);
+                continue;
             }
 
-            free_tokens(t);
+            if (flags & CONNECT_FLAG_SOUNDHW_GET_NAMES) {
+                zval *arr = NULL;
+
+                VIRT_ARRAY_INIT(arr);
+                VIRT_ADD_ASSOC_STRING(arr, "name", subT.tokens[1]);
+                if (subT.numTokens > 3) {
+                    VIRT_ADD_ASSOC_STRING(arr, "description",
+                                          subT.tokens[subT.numTokens - 1]);
+                }
+                add_next_index_zval(return_value, arr);
+            } else {
+                char num[16] = { 0 };
+
+                snprintf(num, sizeof(num), "%zu", i);
+                VIRT_ADD_ASSOC_STRING(return_value, num, subT.tokens[1]);
+            }
+
+            free_tokens(subT);
         }
+        free_tokens(t);
+    } else {
+        RETURN_FALSE;
     }
-    fclose(fp);
+
+ cleanup:
+    VIR_FREE(reply);
+# undef NEEDLE
 #endif
 }
 
 /*
  * Function name:   libvirt_connect_get_maxvcpus
  * Since version:   0.4.1(-2)
- * Description:     Function is used to get maximum number of VCPUs per VM on the hypervisor connection
+ * Description:     Function is used to get maximum number of VCPUs per VM on
+ *                  the hypervisor connection. This API doesn't take emulator limits into
+ *                  consideration, hence the returned value is not guaranteed to be usable. It
+ *                  is recommended to use libvirt_connect_get_domain_capabilities() and look for
+ *                  /domainCapabilities/vcpu[1]/@max value in its output instead.
  * Arguments:       @conn [resource]: resource for connection
- * Returns:         number of VCPUs available per VM on the connection or FALSE for error
+ *                  @type [string]: valid domain type, i.e. the 'type'
+ *                  attribute in the <domain> element
+ * Returns:         number of VCPUs available per VM on the connection or -1 for error
  */
 PHP_FUNCTION(libvirt_connect_get_maxvcpus)
 {
     php_libvirt_connection *conn = NULL;
     zval *zconn;
-    const char *type = NULL;
+    char *type = NULL;
+    size_t type_len = 0;
 
-    GET_CONNECTION_FROM_ARGS("r", &zconn);
-
-    type = virConnectGetType(conn->conn);
-    if (type == NULL)
-        RETURN_FALSE;
+    GET_CONNECTION_FROM_ARGS("r|s", &zconn, &type, &type_len);
 
     RETURN_LONG(virConnectGetMaxVcpus(conn->conn, type));
 }
@@ -577,7 +630,7 @@ PHP_FUNCTION(libvirt_connect_get_sysinfo)
 }
 
 /*
- * Function name:   libvirt_connect_is_encrypted
+ * Function name:   libvirt_connect_get_encrypted
  * Since version:   0.4.1(-2)
  * Description:     Function is used to get the information whether the connection is encrypted or not
  * Arguments:       @conn [resource]: resource for connection
@@ -594,7 +647,7 @@ PHP_FUNCTION(libvirt_connect_get_encrypted)
 }
 
 /*
- * Function name:   libvirt_connect_is_secure
+ * Function name:   libvirt_connect_get_secure
  * Since version:   0.4.1(-2)
  * Description:     Function is used to get the information whether the connection is secure or not
  * Arguments:       @conn [resource]: resource for connection
@@ -643,7 +696,7 @@ PHP_FUNCTION(libvirt_connect_get_information)
         add_assoc_long(return_value, "hypervisor_major", (long)((hvVer/1000000) % 1000));
         add_assoc_long(return_value, "hypervisor_minor", (long)((hvVer/1000) % 1000));
         add_assoc_long(return_value, "hypervisor_release", (long)(hvVer % 1000));
-        snprintf(hvStr, sizeof(hvStr), "%s %d.%d.%d", type,
+        snprintf(hvStr, sizeof(hvStr), "%s %ld.%ld.%ld", type,
                  (long)((hvVer/1000000) % 1000), (long)((hvVer/1000) % 1000), (long)(hvVer % 1000));
         VIRT_ADD_ASSOC_STRING(return_value, "hypervisor_string", hvStr);
     }
@@ -696,7 +749,7 @@ PHP_FUNCTION(libvirt_connect_get_information)
 /*
  * Function name:   libvirt_connect_get_machine_types
  * Since version:   0.4.9
- * Description:     Function is used to get machine types supported by hypervisor on the conneciton
+ * Description:     Function is used to get machine types supported by hypervisor on the connection
  * Arguments:       @conn [resource]: resource for connection
  * Returns:         array of machine types for the connection incl. maxCpus if appropriate
  */
@@ -760,7 +813,7 @@ PHP_FUNCTION(libvirt_connect_get_machine_types)
                                 VIRT_ADD_ASSOC_STRING(arr4, "name", ret3[k]);
                                 VIRT_ADD_ASSOC_STRING(arr4, "maxCpus", numTmp);
 
-                                add_assoc_zval_ex(arr2, key, strlen(key) + 1, arr4);
+                                VIRT_ADD_ASSOC_ZVAL_EX(arr2, key, arr4);
                                 VIR_FREE(numTmp);
                             }
 
@@ -794,19 +847,19 @@ PHP_FUNCTION(libvirt_connect_get_machine_types)
                                 VIRT_ADD_ASSOC_STRING(arr4, "name", ret3[k]);
                                 VIRT_ADD_ASSOC_STRING(arr4, "maxCpus", numTmp);
 
-                                add_assoc_zval_ex(arr3, key, strlen(key) + 1, arr4);
+                                VIRT_ADD_ASSOC_ZVAL_EX(arr3, key, arr4);
                                 VIR_FREE(numTmp);
                             }
 
                             VIR_FREE(ret3[k]);
                         }
 
-                        add_assoc_zval_ex(arr2, ret2[j], strlen(ret2[j]) + 1, arr3);
+                        VIRT_ADD_ASSOC_ZVAL_EX(arr2, ret2[j], arr3);
                     }
                 }
                 //free(ret2[j]);
 
-                add_assoc_zval_ex(return_value, ret[i], strlen(ret[i]) + 1, arr2);
+                VIRT_ADD_ASSOC_ZVAL_EX(return_value, ret[i], arr2);
             }
             VIR_FREE(ret[i]);
         }
@@ -832,10 +885,9 @@ PHP_FUNCTION(libvirt_connect_get_all_domain_stats)
     const char *name = NULL;
     int i;
     int j;
-    virTypedParameter params;
     virDomainStatsRecordPtr *retstats = NULL;
 
-    GET_CONNECTION_FROM_ARGS("r|l|l", &zconn, &stats, &flags);
+    GET_CONNECTION_FROM_ARGS("r|ll", &zconn, &stats, &flags);
 
     retval = virConnectGetAllDomainStats(conn->conn, stats, &retstats, flags);
 
@@ -848,37 +900,10 @@ PHP_FUNCTION(libvirt_connect_get_all_domain_stats)
         VIRT_ARRAY_INIT(arr2);
 
         for (j = 0; j < retstats[i]->nparams; j++) {
-            params = retstats[i]->params[j];
-            switch (params.type) {
-            case VIR_TYPED_PARAM_INT:
-                add_assoc_long(arr2, params.field, params.value.i);
-                break;
-            case VIR_TYPED_PARAM_UINT:
-                add_assoc_long(arr2, params.field, params.value.ui);
-                break;
-            case VIR_TYPED_PARAM_LLONG:
-                add_assoc_long(arr2, params.field, params.value.l);
-                break;
-            case VIR_TYPED_PARAM_ULLONG:
-                add_assoc_long(arr2, params.field, params.value.ul);
-                break;
-            case VIR_TYPED_PARAM_DOUBLE:
-                add_assoc_double(arr2, params.field, params.value.d);
-                break;
-            case VIR_TYPED_PARAM_BOOLEAN:
-                add_assoc_bool(arr2, params.field, params.value.b);
-                break;
-            case VIR_TYPED_PARAM_STRING:
-                VIRT_ADD_ASSOC_STRING(arr2, params.field, params.value.s);
-                break;
-            }
+            VIR_TYPED_PARAMETER_ASSOC(arr2, retstats[i]->params[j]);
         }
         name = virDomainGetName(retstats[i]->dom);
-#if PHP_MAJOR_VERSION >= 7
         zend_hash_update(Z_ARRVAL_P(return_value), zend_string_init(name, strlen(name), 0), arr2);
-#else
-        zend_hash_update(Z_ARRVAL_P(return_value), name, strlen(name)+1, &arr2, sizeof(arr2), NULL);
-#endif
     }
 
     virDomainStatsRecordListFree(retstats);

@@ -54,7 +54,7 @@
             <xsl:when test="$pagename = a/@href">
               <span class="{$class}"><xsl:value-of select="a"/></span>
             </xsl:when>
-            <xsl:when test="a/@href = 'http://wiki.libvirt.org'">
+            <xsl:when test="a/@href = 'https://wiki.libvirt.org'">
               <a title="{./span}" class="{$class}" href="{a/@href}"><xsl:value-of select="a"/></a>
             </xsl:when>
             <xsl:otherwise>
@@ -143,9 +143,10 @@
         <div id="header">
           <div id="headerLogo"/>
           <div id="headerSearch">
-            <form action="{$href_base}search.php" enctype="application/x-www-form-urlencoded" method="get">
+            <form action="https://www.google.com/search" enctype="application/x-www-form-urlencoded" method="get">
               <div>
-                <input id="query" name="query" type="text" size="12" value=""/>
+                <input id="searchsite" name="sitesearch" type="hidden" value="libvirt.org"/>
+                <input id="searchq" name="q" type="text" size="12" value=""/>
                 <input id="submit" name="submit" type="submit" value="Search"/>
               </div>
             </form>

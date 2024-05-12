@@ -2,12 +2,12 @@ SUBDIRS = tools src docs tests
 
 ACLOCAL_AMFLAGS = -I m4
 
-EXTRA_DIST = libvirt-php.spec libvirt-php.spec.in winsrc AUTHORS.in
+EXTRA_DIST = libvirt-php.spec libvirt-php.spec.in AUTHORS.in
 
-AM_DISTCHECK_CONFIGURE_FLAGS = --with-distcheck
+AM_DISTCHECK_CONFIGURE_FLAGS = --with-distcheck --with-php=$(PHPEXECUTABLE) --with-php-config=$(PHPCONFIG)
 
 rpm: clean
-	@(unset CDPATH ; $(MAKE) dist && rpmbuild -ta $(distdir).tar.gz)
+	@(unset CDPATH ; $(MAKE) dist && rpmbuild -ta $(distdir).tar.xz)
 
 dist-hook: gen-AUTHORS
 

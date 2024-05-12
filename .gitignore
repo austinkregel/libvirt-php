@@ -18,6 +18,8 @@
 /missing
 /tests/*.log
 /tests/*.trs
+/tests/check_parameters.sh
+/tests/runtests.sh
 /tests/functions.phpt
 /test-driver
 /AUTHORS
@@ -36,7 +38,7 @@ src/*.so
 stamp-h1
 tags
 tools/generate-api-docs
-libvirt-php-*.tar.gz
+libvirt-php-*.tar.xz
 *~
 !/m4/virt-*.m4
 .idea

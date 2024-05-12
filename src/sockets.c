@@ -14,11 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#ifdef __APPLE__
 #include <netinet/tcp.h>
-#else
-#include <linux/tcp.h>
-#endif
 
 #include "sockets.h"
 #include "util.h"
@@ -39,7 +35,11 @@ DEBUG_INIT("sockets");
  *                         @allow_server_override [bool]: allows function to override server to localhost if server equals local hostname
  * Returns:                socket descriptor on success, -errno otherwise
  */
-int connect_socket(char *server, char *port, int keepalive, int nodelay, int allow_server_override)
+int connect_socket(const char *server,
+                   const char *port,
+                   int keepalive,
+                   int nodelay,
+                   int allow_server_override)
 {
     struct addrinfo hints;
     struct addrinfo *result, *rp;
@@ -56,7 +56,7 @@ int connect_socket(char *server, char *port, int keepalive, int nodelay, int all
         /* Get the current hostname and override to localhost if local machine */
         gethostname(name, 1024);
         if (strcmp(name, server) == 0)
-            server = strdup("localhost");
+            server = "localhost";
     }
 
     DPRINTF("%s: Connecting to %s:%s\n", SOCKETFUNC, server, port);
@@ -141,7 +141,7 @@ int socket_has_data(int sfd, long maxtime, int ignoremsg)
         rc = select( sizeof(fds), &fds, NULL, NULL, NULL);
 
     if (rc==-1) {
-        DPRINTF("%s: Select with error %d (%s)\n", SOCKETFUNC, errno, strerror(-errno));
+        DPRINTF("%s: Select with error %d (%s)\n", SOCKETFUNC, errno, strerror(errno));
         return -errno;
     }
 

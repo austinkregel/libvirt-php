@@ -25,11 +25,11 @@
 
 # define GET_DOMAIN_FROM_ARGS(args, ...)                                       \
     do {                                                                       \
-        reset_error(TSRMLS_C);                                                 \
-        if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC,                   \
+        reset_error();                                                         \
+        if (zend_parse_parameters(ZEND_NUM_ARGS(),                             \
                                   args,                                        \
                                   __VA_ARGS__) == FAILURE) {                   \
-            set_error("Invalid arguments" TSRMLS_CC);                          \
+            set_error("Invalid arguments");                                    \
             RETURN_FALSE;                                                      \
         }                                                                      \
                                                                                \
@@ -45,7 +45,7 @@
     PHP_FE(libvirt_domain_get_counts,            arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_is_persistent,         arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_lookup_by_name,        arginfo_libvirt_conn_name)                    \
-    PHP_FE(libvirt_domain_get_xml_desc,          arginfo_libvirt_conn_xpath)                   \
+    PHP_FE(libvirt_domain_get_xml_desc,          arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_get_disk_devices,      arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_get_interface_devices, arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_change_vcpus,          arginfo_libvirt_domain_change_vcpus)          \
@@ -86,6 +86,9 @@
     PHP_FE(libvirt_domain_set_max_memory,        arginfo_libvirt_domain_set_memory)            \
     PHP_FE(libvirt_domain_set_memory_flags,      arginfo_libvirt_domain_set_memory_flags)      \
     PHP_FE(libvirt_domain_block_commit,          arginfo_libvirt_domain_block_commit)          \
+    PHP_FE(libvirt_domain_block_copy,            arginfo_libvirt_domain_block_copy)            \
+    PHP_FE(libvirt_domain_block_pull,            arginfo_libvirt_domain_block_pull)            \
+    PHP_FE(libvirt_domain_block_rebase,          arginfo_libvirt_domain_block_rebase)          \
     PHP_FE(libvirt_domain_block_stats,           arginfo_libvirt_conn_path)                    \
     PHP_FE(libvirt_domain_block_resize,          arginfo_libvirt_domain_block_resize)          \
     PHP_FE(libvirt_domain_block_job_info,        arginfo_libvirt_domain_block_job_info)        \
@@ -122,14 +125,14 @@
     PHP_FE(libvirt_list_inactive_domains,        arginfo_libvirt_conn)                         \
     PHP_FE(libvirt_domain_get_cpu_total_stats,   arginfo_libvirt_conn)                         \
 
-int le_libvirt_domain;
+extern int le_libvirt_domain;
 
 typedef struct _php_libvirt_domain {
     virDomainPtr domain;
     php_libvirt_connection* conn;
 } php_libvirt_domain;
 
-void php_libvirt_domain_dtor(virt_resource *rsrc TSRMLS_DC);
+void php_libvirt_domain_dtor(zend_resource *rsrc);
 
 PHP_FUNCTION(libvirt_domain_new);
 PHP_FUNCTION(libvirt_domain_new_get_vnc);
@@ -180,6 +183,9 @@ PHP_FUNCTION(libvirt_domain_set_memory_flags);
 PHP_FUNCTION(libvirt_domain_memory_peek);
 PHP_FUNCTION(libvirt_domain_memory_stats);
 PHP_FUNCTION(libvirt_domain_block_commit);
+PHP_FUNCTION(libvirt_domain_block_copy);
+PHP_FUNCTION(libvirt_domain_block_pull);
+PHP_FUNCTION(libvirt_domain_block_rebase);
 PHP_FUNCTION(libvirt_domain_block_stats);
 PHP_FUNCTION(libvirt_domain_block_resize);
 PHP_FUNCTION(libvirt_domain_block_job_info);

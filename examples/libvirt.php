@@ -61,7 +61,12 @@ class Libvirt {
         return ($tmp) ? $tmp : $this->_set_last_error();
     }
 
-    function domain_get_screenshot($domain, $convert = 1) {
+    function domain_get_screenshot($domain) {
+        $extensions = array(
+            'image/pmg' => 'png',
+            'image/x-portable-pixmap' => 'ppm',
+        );
+
         $dom = $this->get_domain_object($domain);
 
         $tmp = libvirt_domain_get_screenshot_api($dom);
@@ -69,62 +74,17 @@ class Libvirt {
             return $this->_set_last_error();
 
         $mime = $tmp['mime'];
+        $ext = isset($extensions[$mime]) ? $extensions[$mime] : "";
 
-        if ($convert && $tmp['mime'] != "image/png") {
-            $image = new Imagick();
-            $image->readImage($tmp['file']);
-            $image->setImageFormat("png");
-            $data = $image->getImageBlob();
-            $mime = "image/png";
-        } else {
-            $fp = fopen($tmp['file'], "rb");
-            $data = fread($fp, filesize($tmp['file']));
-            fclose($fp);
-        }
+        $data = file_get_contents($tmp['file']);
+
         unlink($tmp['file']);
         unset($tmp['file']);
         $tmp['data'] = $data;
         $tmp['mime'] = $mime;
+        $tmp['filename'] = libvirt_domain_get_name($dom) . $ext;
 
         return $tmp;
-    }
-
-    function domain_get_screenshot_thumbnail($domain, $w=120) {
-        $screen = $this->domain_get_screenshot($domain);
-
-        if (!$screen)
-            return false;
-
-        $image = new Imagick();
-        $image->readImageBlob($screen['data']);
-        $origW = $image->getImageWidth();
-        $origH = $image->getImageHeight();
-        $h = ($w / $origW) * $origH;
-        $image->resizeImage($w, $h, 0, 0);
-
-        $screen['data'] = $image->getImageBlob();
-
-        return $screen;
-    }
-
-    function domain_get_screen_dimensions($domain) {
-        $screen = $this->domain_get_screenshot($domain);
-        $imgFile = tempnam("/tmp", "libvirt-php-tmp-resize-XXXXXX");;
-
-        $width = false;
-        $height = false;
-
-        if ($screen) {
-            $fp = fopen($imgFile, "wb");
-            fwrite($fp, $screen);
-            fclose($fp);
-        }
-        if (file_exists($imgFile) && $screen)
-            list($width, $height) = getimagesize($imgFile);
-
-        unlink($imgFile);
-
-        return array('height' => $height, 'width' => $width);
     }
 
     function domain_send_keys($domain, $keys) {
@@ -587,7 +547,7 @@ class Libvirt {
     function domain_change_xml($domain, $xml) {
         $dom = $this->get_domain_object($domain);
 
-        if (!($old_xml = libvirt_domain_get_xml_desc($dom, NULL)))
+        if (!($old_xml = libvirt_domain_get_xml_desc($dom)))
             return $this->_set_last_error();
         if (!libvirt_domain_undefine($dom))
             return $this->_set_last_error();
@@ -797,7 +757,7 @@ class Libvirt {
         if (!$dom)
             return false;
 
-        $tmp = libvirt_domain_get_xml_desc($dom, $get_inactive ? VIR_DOMAIN_XML_INACTIVE : 0);
+        $tmp = libvirt_domain_get_xml_desc($dom, NULL, $get_inactive ? VIR_DOMAIN_XML_INACTIVE : 0);
         return ($tmp) ? $tmp : $this->_set_last_error();
     }
 
@@ -873,6 +833,15 @@ class Libvirt {
         return ($tmp) ? $tmp : $this->_set_last_error();
     }
 
+    function domain_reset($domain) {
+        $dom = $this->get_domain_object($domain);
+        if (!$dom)
+            return false;
+
+        $tmp = libvirt_domain_reset($dom);
+        return ($tmp) ? $tmp: $this->_set_last_error();
+    }
+
     function domain_suspend($domain) {
         $dom = $this->get_domain_object($domain);
         if (!$dom)
@@ -945,7 +914,10 @@ class Libvirt {
 
     function domain_get_vnc_port($domain) {
         $tmp = $this->get_xpath($domain, '//domain/devices/graphics/@port', false);
-        $var = (int)$tmp[0];
+        if ($tmp != false)
+            $var = (int)$tmp[0];
+        else
+            $var = 0;
         unset($tmp);
 
         return $var;

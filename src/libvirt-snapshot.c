@@ -4,6 +4,8 @@
  * See COPYING for the license of this software
  */
 
+#include <config.h>
+
 #include <libvirt/libvirt.h>
 
 #include "libvirt-php.h"
@@ -11,14 +13,16 @@
 
 DEBUG_INIT("snapshot");
 
-void php_libvirt_snapshot_dtor(virt_resource *rsrc TSRMLS_DC)
+int le_libvirt_snapshot;
+
+void php_libvirt_snapshot_dtor(zend_resource *rsrc)
 {
     php_libvirt_snapshot *snapshot = (php_libvirt_snapshot *)rsrc->ptr;
     int rv = 0;
 
     if (snapshot != NULL) {
         if (snapshot->snapshot != NULL) {
-            if (!check_resource_allocation(NULL, INT_RESOURCE_SNAPSHOT, snapshot->snapshot TSRMLS_CC)) {
+            if (!check_resource_allocation(NULL, INT_RESOURCE_SNAPSHOT, snapshot->snapshot)) {
                 snapshot->snapshot = NULL;
                 efree(snapshot);
                 return;
@@ -26,10 +30,10 @@ void php_libvirt_snapshot_dtor(virt_resource *rsrc TSRMLS_DC)
             rv = virDomainSnapshotFree(snapshot->snapshot);
             if (rv != 0) {
                 DPRINTF("%s: virDomainSnapshotFree(%p) returned %d\n", __FUNCTION__, snapshot->snapshot, rv);
-                php_error_docref(NULL TSRMLS_CC, E_WARNING, "virDomainSnapshotFree failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
+                php_error_docref(NULL, E_WARNING, "virDomainSnapshotFree failed with %i on destructor: %s", rv, LIBVIRT_G(last_error));
             } else {
                 DPRINTF("%s: virDomainSnapshotFree(%p) completed successfully\n", __FUNCTION__, snapshot->snapshot);
-                resource_change_counter(INT_RESOURCE_SNAPSHOT, snapshot->domain->conn->conn, snapshot->snapshot, 0 TSRMLS_CC);
+                resource_change_counter(INT_RESOURCE_SNAPSHOT, snapshot->domain->conn->conn, snapshot->snapshot, 0);
             }
             snapshot->snapshot = NULL;
         }
@@ -73,7 +77,7 @@ PHP_FUNCTION(libvirt_domain_snapshot_lookup_by_name)
 {
     php_libvirt_domain *domain = NULL;
     zval *zdomain;
-    strsize_t name_len;
+    size_t name_len;
     char *name = NULL;
     zend_long flags = 0;
     php_libvirt_snapshot *res_snapshot;
@@ -92,7 +96,7 @@ PHP_FUNCTION(libvirt_domain_snapshot_lookup_by_name)
     res_snapshot->snapshot = snapshot;
 
     DPRINTF("%s: returning %p\n", PHPFUNC, res_snapshot->snapshot);
-    resource_change_counter(INT_RESOURCE_SNAPSHOT, domain->conn->conn, res_snapshot->snapshot, 1 TSRMLS_CC);
+    resource_change_counter(INT_RESOURCE_SNAPSHOT, domain->conn->conn, res_snapshot->snapshot, 1);
 
     VIRT_REGISTER_RESOURCE(res_snapshot, le_libvirt_snapshot);
 }
@@ -116,6 +120,110 @@ PHP_FUNCTION(libvirt_domain_snapshot_create)
     GET_DOMAIN_FROM_ARGS("r|l", &zdomain, &flags);
 
     snapshot = virDomainSnapshotCreateXML(domain->domain, "<domainsnapshot/>", flags);
+    DPRINTF("%s: virDomainSnapshotCreateXML(%p, <xml>) returned %p\n", PHPFUNC, domain->domain, snapshot);
+    if (snapshot == NULL)
+        RETURN_FALSE;
+
+    res_snapshot = (php_libvirt_snapshot *)emalloc(sizeof(php_libvirt_snapshot));
+    res_snapshot->domain = domain;
+    res_snapshot->snapshot = snapshot;
+
+    DPRINTF("%s: returning %p\n", PHPFUNC, res_snapshot->snapshot);
+    resource_change_counter(INT_RESOURCE_SNAPSHOT, domain->conn->conn, res_snapshot->snapshot, 1);
+
+    VIRT_REGISTER_RESOURCE(res_snapshot, le_libvirt_snapshot);
+}
+
+/*
+ * Function name:   libvirt_domain_snapshot_create_xml
+ * Since version:   0.5.8
+ * Description:     This function creates the domain snapshot for the domain identified by it's resource
+ * Arguments:       @res [resource]: libvirt domain resource
+ *                  @xml [string]: XML description of the snapshot.
+ *                  @flags [int]: libvirt snapshot flags
+ * Returns:         domain snapshot resource
+ */
+PHP_FUNCTION(libvirt_domain_snapshot_create_xml)
+{
+    php_libvirt_domain *domain = NULL;
+    php_libvirt_snapshot *res_snapshot;
+    zval *zdomain;
+    char *xml = NULL;
+    size_t xml_len = 0;
+    zend_long flags = 0;
+    virDomainSnapshotPtr snapshot = NULL;
+
+    GET_DOMAIN_FROM_ARGS("rs|l", &zdomain, &xml, &xml_len, &flags);
+
+    snapshot = virDomainSnapshotCreateXML(domain->domain, xml, flags);
+    DPRINTF("%s: virDomainSnapshotCreateXML(%p, %s, %ld) returned %p\n",
+            PHPFUNC, domain->domain, xml, flags, snapshot);
+    if (snapshot == NULL)
+        RETURN_FALSE;
+
+    res_snapshot = (php_libvirt_snapshot *)emalloc(sizeof(php_libvirt_snapshot));
+    res_snapshot->domain = domain;
+    res_snapshot->snapshot = snapshot;
+
+    DPRINTF("%s: returning %p\n", PHPFUNC, res_snapshot->snapshot);
+    resource_change_counter(INT_RESOURCE_SNAPSHOT, domain->conn->conn, res_snapshot->snapshot, 1);
+
+    VIRT_REGISTER_RESOURCE(res_snapshot, le_libvirt_snapshot);
+}
+
+/*
+ * Function name:   libvirt_domain_snapshot_current
+ * Since version:   0.5.6
+ * Description:     Function is used to lookup the current snapshot for given domain
+ * Arguments:       @res [resource]: libvirt domain resource
+ *                  @flags [int]: libvirt snapshot flags
+ * Returns:         domain snapshot resource
+ */
+PHP_FUNCTION(libvirt_domain_snapshot_current)
+{
+    php_libvirt_domain *domain = NULL;
+    zval *zdomain;
+    zend_long flags = 0;
+    php_libvirt_snapshot *res_snapshot;
+    virDomainSnapshotPtr snapshot = NULL;
+
+    GET_DOMAIN_FROM_ARGS("r|l", &zdomain, &flags);
+
+    snapshot = virDomainSnapshotCurrent(domain->domain, flags);
+    if (snapshot == NULL)
+        RETURN_FALSE;
+
+    res_snapshot = (php_libvirt_snapshot *)emalloc(sizeof(php_libvirt_snapshot));
+    res_snapshot->domain = domain;
+    res_snapshot->snapshot = snapshot;
+
+    DPRINTF("%s: returning %p\n", PHPFUNC, res_snapshot->snapshot);
+    resource_change_counter(INT_RESOURCE_SNAPSHOT, domain->conn->conn, res_snapshot->snapshot, 1);
+
+    VIRT_REGISTER_RESOURCE(res_snapshot, le_libvirt_snapshot);
+}
+
+/*
+ * Function name:   libvirt_domain_snapshot_create_xml
+ * Description:     This function creates the domain snapshot from XML string for the domain identified by it's resource
+ * Arguments:       @res [resource]: libvirt domain resource
+ *                  @xml [string]: xml
+ *                  @flags [int]: libvirt snapshot flags
+ * Returns:         domain snapshot resource
+ */
+PHP_FUNCTION(libvirt_domain_snapshot_create_xml)
+{
+    php_libvirt_domain *domain = NULL;
+    php_libvirt_snapshot *res_snapshot;
+    zval *zdomain;
+    char *xml;
+    strsize_t xml_len;
+    virDomainSnapshotPtr snapshot = NULL;
+    zend_long flags = 0;
+
+    GET_DOMAIN_FROM_ARGS("rs|l", &zdomain, &xml, &xml_len, &flags);
+
+    snapshot = virDomainSnapshotCreateXML(domain->domain, xml, flags);
     DPRINTF("%s: virDomainSnapshotCreateXML(%p, <xml>) returned %p\n", PHPFUNC, domain->domain, snapshot);
     if (snapshot == NULL)
         RETURN_FALSE;

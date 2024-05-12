@@ -33,8 +33,8 @@
 	if (!is_resource($res))
 		bail('Domain definition failed with error: '.libvirt_get_last_error());
 
-	if (!($snapshot = libvirt_domain_has_current_snapshot($res)) && !is_null(libvirt_get_last_error()))
-		bail('An error occured while getting domain snapshot: '.libvirt_get_last_error());
+	if (libvirt_domain_has_current_snapshot($res) !== FALSE)
+		bail('An error occurred while getting domain snapshot: '.libvirt_get_last_error());
 
 	if (!is_resource($snapshot_res = libvirt_domain_snapshot_create($res)))
 		bail('Error on creating snapshot: '.libvirt_get_last_error());
@@ -47,6 +47,11 @@
 
 	if (!libvirt_domain_has_current_snapshot($res))
 		bail('Domain should be having current snapshot but it\'s not having it');
+
+	if (!($snapshot_res2 = libvirt_domain_snapshot_current($res)) ||
+		(libvirt_domain_snapshot_get_xml($snapshot_res) != libvirt_domain_snapshot_get_xml($snapshot_res2))) {
+		bail('Domain should have current snapshot but it returned nothing');
+	}
 
 	if (!libvirt_domain_snapshot_revert($snapshot_res))
 		bail('Cannot revert to the domain snapshot taken now: '.libvirt_get_last_error());
@@ -62,7 +67,7 @@
 
 	unset($snapshot_res);
 
-	$snapshot_res = libvirt_domain_snapshot_create($res);
+	$snapshot_res = libvirt_domain_snapshot_create_xml($res, "<domainsnapshot/>");
 	if (!libvirt_domain_snapshot_delete($snapshot_res))
 		bail('Cannot delete snapshot with children: '.libvirt_get_last_error());
 
