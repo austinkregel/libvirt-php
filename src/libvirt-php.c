@@ -517,11 +517,18 @@ ZEND_ARG_INFO(0, timeout)
 ZEND_ARG_INFO(0, flags)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO_EX(arginfo_libvirt_domain_snapshot_create_xml, 0, 0, 2)
+ZEND_ARG_INFO(0, conn)
+ZEND_ARG_INFO(0, xml)
+ZEND_ARG_INFO(0, flags)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO_EX(arginfo_libvirt_network_get_dhcp_leases, 0, 0, 1)
 ZEND_ARG_INFO(0, conn)
 ZEND_ARG_INFO(0, mac)
 ZEND_ARG_INFO(0, flags)
 ZEND_END_ARG_INFO()
+
 
 static zend_function_entry libvirt_functions[] = {
     PHP_FE_LIBVIRT_CONNECTION
