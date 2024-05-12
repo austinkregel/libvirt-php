@@ -189,6 +189,7 @@ typedef struct _php_libvirt_hash_key_info {
 
 # define SIGNED_LONGLONG_ASSOC(out, key, in)                                          \
     if (LIBVIRT_G(signed_longlong_to_string_ini)) {                                   \
+        char tmpnumber[64] = { 0 };                                           \
         snprintf(tmpnumber, 63, "%lld", in);                                   \
         VIRT_ADD_ASSOC_STRING(out, key, tmpnumber);                            \
     } else {                                                                   \
@@ -197,6 +198,7 @@ typedef struct _php_libvirt_hash_key_info {
 
 # define SIGNED_LONGLONG_ASSOC(out, key, in)                                          \
     if (LIBVIRT_G(signed_longlong_to_string_ini)) {                                   \
+        char tmpnumber[64] = { 0 };                                           \
         snprintf(tmpnumber, 63, "%lld", in);                                   \
         VIRT_ADD_ASSOC_STRING(out, key, tmpnumber);                            \
     } else {                                                                   \

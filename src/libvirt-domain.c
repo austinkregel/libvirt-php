@@ -148,17 +148,17 @@ PHP_FUNCTION(libvirt_domain_new)
                                NULL, NULL, vcpus, iso_image,
                                vmDisks, numDisks, vmNetworks, numNets,
                                flags
-    TSRMLS_CC);
+   );
 
     if (tmp == NULL) {
         DPRINTF("%s: Cannot get installation XML, it is null\n", PHPFUNC);
-        set_error("Cannot get installation XML, it seems to be null" TSRMLS_CC);
+        set_error("Cannot get installation XML, it seems to be null");
         goto error;
     }
 
     if (tmp[0] != '<') {
         DPRINTF("%s: %s\n", PHPFUNC, tmp);
-        set_error(tmp TSRMLS_CC);
+        set_error(tmp);
         goto error;
     }
 
@@ -226,7 +226,7 @@ PHP_FUNCTION(libvirt_domain_new)
     tmp = installation_get_xml(conn->conn, name, memMB, maxmemMB,
                                NULL, uuid, vcpus, NULL,
                                vmDisks, numDisks, vmNetworks, numNets,
-                               flags TSRMLS_CC);
+                               flags);
 
     if (tmp == NULL) {
         DPRINTF("%s: Cannot get installation XML\n", PHPFUNC);
@@ -236,19 +236,19 @@ PHP_FUNCTION(libvirt_domain_new)
 
     if (tmp[0] != '<') {
         DPRINTF("%s: %s\n", PHPFUNC, tmp);
-        set_error(tmp TSRMLS_CC);
+        set_error(tmp);
         goto error;
     }
 
     if (tmp[0] != '<') {
         DPRINTF("%s: %s\n", PHPFUNC, tmp);
-        set_error(tmp TSRMLS_CC);
+        set_error(tmp);
         goto error;
     }
 
     domainUpdated = virDomainDefineXML(conn->conn, tmp);
     if (domainUpdated == NULL) {
-        set_error_if_unset("Cannot update domain definition, definition null" TSRMLS CC);
+        set_error_if_unset("Cannot update domain definition, definition null");
         DPRINTF("%s: Cannot update domain definition "
                 "(name = '%s', uuid = '%s', error = '%s')\n",
                 PHPFUNC, name, uuid, LIBVIRT_G(last_error));
@@ -1969,7 +1969,6 @@ PHP_FUNCTION(libvirt_domain_block_stats)
         RETURN_FALSE;
 
     array_init(return_value);
-    LONGLONG_INIT;
     SIGNED_LONGLONG_ASSOC(return_value, "rd_req", stats.rd_req);
     SIGNED_LONGLONG_ASSOC(return_value, "rd_bytes", stats.rd_bytes);
     SIGNED_LONGLONG_ASSOC(return_value, "wr_req", stats.wr_req);
@@ -3585,56 +3584,6 @@ PHP_FUNCTION(libvirt_domain_get_cpu_total_stats)
     done = 1;
 
  cleanup:
-    VIR_FREE(params);
-    if (!done)
-        RETURN_FALSE;
-}
-
-/*
- * Function name:   libvirt_domain_get_cpu_total_stats
- * Since version:   0.5.5
- * Description:     Function is used to get statistics relating to CPU usage attributable to a single domain
- * Arguments:       @res [resource]: libvirt connection resource
- * Returns:         array, in second unit
- */
-PHP_FUNCTION(libvirt_domain_get_cpu_total_stats)
-{
-    php_libvirt_domain *domain = NULL;
-    zval *zdomain;
-
-    virTypedParameterPtr params = NULL;
-    int max_id, cpu = 0, show_count = -1, nparams = 0, stats_per_cpu, done = 0, i;
-
-    GET_DOMAIN_FROM_ARGS("r", &zdomain);
-
-
-    /* get supported num of parameter for total statistics */
-    if ((nparams = virDomainGetCPUStats(domain->domain, NULL, 0, -1, 1, 0)) < 0)
-        goto cleanup;
-
-    if (!nparams) {
-        goto cleanup;
-    }
-
-    params = calloc(nparams, sizeof(virTypedParameter));
-
-    if (params == NULL)
-        goto cleanup;
-
-    /* passing start_cpu == -1 gives us domain's total status */
-    if ((stats_per_cpu = virDomainGetCPUStats(domain->domain, params, nparams, -1, 1, 0)) < 0)
-        goto cleanup;
-
-    array_init(return_value);
-    for (i = 0; i < stats_per_cpu; i++) {
-        if (params[i].type == VIR_TYPED_PARAM_ULLONG) {
-            add_assoc_double(return_value, params[i].field, ((double) params[i].value.ul) / 1000000000);
-        }
-    }
-
-    done = 1;
-
-    cleanup:
     VIR_FREE(params);
     if (!done)
         RETURN_FALSE;

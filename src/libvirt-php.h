@@ -87,11 +87,7 @@ typedef uint64_t arch_uint;
 /* PHP functions are prefixed with `zif_` so strip it */
 # define PHPFUNC (__FUNCTION__ + 4)
 
-#ifdef ZTS
-#define LIBVIRT_G(v) TSRMG(libvirt_globals_id, zend_libvirt_globals *, v)
-#else
 #define LIBVIRT_G(v) (libvirt_globals.v)
-#endif
 
 #define PHP_LIBVIRT_WORLD_VERSION VERSION
 #define PHP_LIBVIRT_WORLD_EXTNAME "libvirt"
@@ -143,11 +139,11 @@ ZEND_END_MODULE_GLOBALS(libvirt)
 ZEND_EXTERN_MODULE_GLOBALS(libvirt)
 
 /* Private definitions */
-void set_error(char *msg TSRMLS_DC);
-void set_error3(char *msg, int code, int domain TSRMLS_DC);
-void set_error_if_unset(char *msg TSRMLS_DC);
-void reset_error(TSRMLS_D);
-int count_resources(int type TSRMLS_DC);
+void set_error(char *msg);
+void set_error3(char *msg, int code, int domain);
+void set_error_if_unset(char *msg);
+void reset_error();
+int count_resources(int type);
 int resource_change_counter(int type, virConnectPtr conn, void *mem,
                             int inc);
 int check_resource_allocation(virConnectPtr conn, int type,

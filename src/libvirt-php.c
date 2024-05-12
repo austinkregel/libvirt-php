@@ -517,12 +517,6 @@ ZEND_ARG_INFO(0, timeout)
 ZEND_ARG_INFO(0, flags)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_libvirt_domain_snapshot_create_xml, 0, 0, 2)
-ZEND_ARG_INFO(0, conn)
-ZEND_ARG_INFO(0, xml)
-ZEND_ARG_INFO(0, flags)
-ZEND_END_ARG_INFO()
-
 ZEND_BEGIN_ARG_INFO_EX(arginfo_libvirt_network_get_dhcp_leases, 0, 0, 1)
 ZEND_ARG_INFO(0, conn)
 ZEND_ARG_INFO(0, mac)
@@ -958,7 +952,7 @@ void set_error(char *msg)
  * Arguments:               @msg [string]: error message string
  * Returns:                 None
  */
-void set_error3(char *msg, int code, int domain TSRMLS_DC)
+void set_error3(char *msg, int code, int domain)
 {
     if (LIBVIRT_G(last_error) != NULL)
         efree(LIBVIRT_G(last_error));
@@ -968,30 +962,7 @@ void set_error3(char *msg, int code, int domain TSRMLS_DC)
         return;
     }
 
-    php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s", msg);
-    LIBVIRT_G(last_error) = estrndup(msg, strlen(msg));
-    LIBVIRT_G(last_error_code) = code;
-    LIBVIRT_G(last_error_domain) = domain;
-}
-
-/*
- * Private function name:   set_error3
- * Since version:           0.5.5
- * Description:             This private function is used to set the error string and errno to the library. This string and code can be obtained by libvirt_get_last_error() and libvirt_get_last_error_code() from the PHP application.
- * Arguments:               @msg [string]: error message string
- * Returns:                 None
- */
-void set_error3(char *msg, int code, int domain TSRMLS_DC)
-{
-    if (LIBVIRT_G(last_error) != NULL)
-        efree(LIBVIRT_G(last_error));
-
-    if (msg == NULL) {
-        LIBVIRT_G(last_error) = NULL;
-        return;
-    }
-
-    php_error_docref(NULL TSRMLS_CC, E_WARNING, "%s", msg);
+    php_error_docref(NULL, E_WARNING, "%s", msg);
     LIBVIRT_G(last_error) = estrndup(msg, strlen(msg));
     LIBVIRT_G(last_error_code) = code;
     LIBVIRT_G(last_error_domain) = domain;
@@ -1049,8 +1020,7 @@ void reset_error(void)
 static void catch_error(void *userData ATTRIBUTE_UNUSED,
                         virErrorPtr error)
 {
-    TSRMLS_FETCH_FROM_CTX(userData);
-    set_error3(error->message, error->code, error->domain TSRMLS_CC);
+    set_error3(error->message, error->code, error->domain);
 }
 
 /*
@@ -2522,10 +2492,10 @@ char *installation_get_xml(virConnectPtr conn, char *name, int memMB,
         strcat(features, "<pae/>");
 
     if (arch == NULL) {
-        arch = connection_get_arch(conn TSRMLS_CC);
+        arch = connection_get_arch(conn);
     }
 
-    if (!(emulator = connection_get_emulator(conn, arch TSRMLS_CC))) {
+    if (!(emulator = connection_get_emulator(conn, arch))) {
         sprintf(errorBuffer, "%s: Cannot get emulator\n", __FUNCTION__);
         return errorBuffer;
     }
